@@ -37,6 +37,7 @@ class VoiceProfile:
     tts_params: dict[str, object]
     is_default: bool
     created_at: datetime
+    updated_at: datetime
 
 
 @dataclass

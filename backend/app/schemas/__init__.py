@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 import uuid
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel
@@ -28,3 +29,66 @@ class SlideUploadResponse(BaseModel):
     job_id: uuid.UUID
     project_id: uuid.UUID
     status: Literal["queued"]
+
+
+# ---------------------------------------------------------------------------
+# Voice profile schemas
+# ---------------------------------------------------------------------------
+
+
+class VoiceUploadResponse(BaseModel):
+    profile_id: uuid.UUID
+    job_id: uuid.UUID
+    status: Literal["queued"]
+
+
+class VoiceProfileSummary(BaseModel):
+    id: uuid.UUID
+    display_name: str
+    is_default: bool
+    transcript_preview: str
+    has_transcript: bool
+    created_at: datetime
+
+
+class VoiceProfileDetail(BaseModel):
+    id: uuid.UUID
+    display_name: str
+    is_default: bool
+    style_reference_transcript: str
+    transcript_preview: str
+    has_transcript: bool
+    extra_style_sample: str | None
+    tts_engine: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class VoicePatchRequest(BaseModel):
+    display_name: str | None = None
+    extra_style_sample: str | None = None
+    is_default: bool | None = None
+
+
+# ---------------------------------------------------------------------------
+# Project schemas
+# ---------------------------------------------------------------------------
+
+
+class ProjectCreateRequest(BaseModel):
+    title: str
+
+
+class ProjectPatchRequest(BaseModel):
+    voice_profile_id: uuid.UUID | None = None
+    wizard_step: str | None = None
+
+
+class ProjectResponse(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    title: str
+    voice_profile_id: uuid.UUID | None
+    wizard_step: str
+    created_at: datetime
+    updated_at: datetime

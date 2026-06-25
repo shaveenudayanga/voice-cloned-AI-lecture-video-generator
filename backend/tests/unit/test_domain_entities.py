@@ -7,6 +7,7 @@ from app.domain.value_objects import BlobKey
 
 
 def test_voice_profile_has_user_id() -> None:
+    now = datetime.now(UTC)
     vp = VoiceProfile(
         id=uuid.uuid4(),
         user_id=uuid.uuid4(),
@@ -17,7 +18,8 @@ def test_voice_profile_has_user_id() -> None:
         tts_engine="f5",
         tts_params={},
         is_default=True,
-        created_at=datetime.now(UTC),
+        created_at=now,
+        updated_at=now,
     )
     assert vp.user_id is not None
     assert vp.audio_blob.bucket == "lecturevoice"

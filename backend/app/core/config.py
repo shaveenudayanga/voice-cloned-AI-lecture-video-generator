@@ -57,6 +57,10 @@ class Settings(BaseSettings):
         default=50 * 1024 * 1024,
         description="Maximum upload size in bytes (default 50 MB)",
     )
+    max_voice_upload_mb: int = Field(
+        default=25,
+        description="Maximum voice recording upload size in MB (default 25 MB)",
+    )
 
     # LLM
     llm_provider: Literal["gemini", "ollama"] = Field(
