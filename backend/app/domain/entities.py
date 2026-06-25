@@ -67,12 +67,13 @@ class Slide:
 class Script:
     id: uuid.UUID
     slide_id: uuid.UUID
-    narration_text: str
-    estimated_reading_time_s: float
+    project_id: uuid.UUID
+    text: str
+    estimated_reading_seconds: int
     pronunciation_hints: str | None
-    # SHA-256 of narration_text; used for cache-skip fingerprint (§7.3)
-    content_hash: str
     version: int
+    # SHA-256 of text; used for TTS cache-skip fingerprint (§7.3 lever 5)
+    script_hash: str
     created_at: datetime
     updated_at: datetime
 

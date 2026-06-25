@@ -82,6 +82,7 @@ testpaths = ["tests"]
 addopts = "--cov=app --cov-report=term-missing --cov-fail-under=0"
 markers = [
     "slow: marks tests that require model downloads or real inference (deselect with '-m not slow')",
+    "integration: marks tests that call real external APIs (deselect with '-m not integration')",
 ]
 
 [tool.ruff]

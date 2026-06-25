@@ -71,6 +71,45 @@ class VoicePatchRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Script schemas
+# ---------------------------------------------------------------------------
+
+
+class ScriptListItem(BaseModel):
+    id: uuid.UUID
+    slide_id: uuid.UUID
+    order_index: int
+    text: str
+    estimated_reading_seconds: int
+    pronunciation_hints: str | None
+    version: int
+    script_hash: str
+
+
+class ScriptPatchRequest(BaseModel):
+    text: str | None = None
+    pronunciation_hints: str | None = None
+
+
+class ScriptResponse(BaseModel):
+    id: uuid.UUID
+    slide_id: uuid.UUID
+    project_id: uuid.UUID
+    text: str
+    estimated_reading_seconds: int
+    pronunciation_hints: str | None
+    version: int
+    script_hash: str
+    updated_at: datetime
+
+
+class ScriptGenerateResponse(BaseModel):
+    job_ids: list[uuid.UUID]
+    slide_count: int
+    status: str
+
+
+# ---------------------------------------------------------------------------
 # Project schemas
 # ---------------------------------------------------------------------------
 

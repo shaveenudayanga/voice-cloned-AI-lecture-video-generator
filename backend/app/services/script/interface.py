@@ -5,8 +5,8 @@ from typing import Protocol, runtime_checkable
 
 @dataclass
 class GeneratedScript:
-    narration_text: str
-    estimated_reading_time_s: float
+    text: str
+    estimated_reading_seconds: int
     pronunciation_hints: str | None
 
 
@@ -16,10 +16,10 @@ class LLMScriptGenerator(Protocol):
 
     async def generate(
         self,
-        slide_image_png: bytes,
+        slide_image_bytes: bytes,
         slide_text: str,
-        style_reference_transcript: str,
-        extra_style_sample: str | None = None,
+        style_reference: str | None,
+        pronunciation_hints: str | None,
     ) -> GeneratedScript:
-        """Return a script that explains the slide in the professor's own vocabulary."""
+        """Return a script that explains the slide in the professor's own vocabulary and style."""
         ...

@@ -46,6 +46,13 @@ class SlideRepository:
         await self._session.flush()
         return _to_entity(model)
 
+    async def get(self, slide_id: uuid.UUID) -> Slide | None:
+        result = await self._session.execute(
+            select(SlideModel).where(SlideModel.id == slide_id)
+        )
+        m = result.scalar_one_or_none()
+        return _to_entity(m) if m is not None else None
+
     async def list_by_project(self, project_id: uuid.UUID) -> list[Slide]:
         result = await self._session.execute(
             select(SlideModel)
