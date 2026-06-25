@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Node / pnpm
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+
+# Environment — NEVER commit real .env files
+.env
+.env.local
+.env.*.local
+
+# Docker volumes (local dev)
+postgres_data/
+valkey_data/
+seaweedfs_data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+
+# Secrets
+*.pem
+*.key
+*.crt

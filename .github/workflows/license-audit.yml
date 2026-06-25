@@ -1,0 +1,38 @@
+name: License Audit
+
+on:
+  pull_request:
+    paths:
+      - "backend/pyproject.toml"
+      - "backend/uv.lock"
+      - "frontend/package.json"
+      - "frontend/pnpm-lock.yaml"
+      - "docs/LICENSE_AUDIT.md"
+      - "scripts/license-audit.py"
+      - ".github/workflows/license-audit.yml"
+
+jobs:
+  verify-license-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install pip-licenses
+        run: pip install pip-licenses toml
+
+      - name: Run license audit script
+        run: python3 scripts/license-audit.py --check
+        # --check mode: regenerates LICENSE_AUDIT.md in a temp location and diffs against
+        # the committed version. Exits non-zero if they differ.
+
+      - name: Verify LICENSE_AUDIT.md is up to date
+        run: |
+          if ! git diff --exit-code docs/LICENSE_AUDIT.md; then
+            echo "ERROR: docs/LICENSE_AUDIT.md is stale. Run 'make license-audit' and commit the result."
+            exit 1
+          fi

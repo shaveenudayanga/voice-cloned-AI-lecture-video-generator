@@ -1,0 +1,44 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:base"],
+  "packageRules": [
+    {
+      "description": "Patch upgrades: auto-merge after CI passes (§5.4)",
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "description": "Minor/major upgrades: require human approval and one-paragraph PR note (§5.4)",
+      "matchUpdateTypes": ["minor", "major"],
+      "automerge": false,
+      "labels": ["dependency-upgrade"]
+    },
+    {
+      "description": "PyTorch: hold at 2.11.x until 2.12.2+ per ADR-0006",
+      "matchPackageNames": ["torch", "torchaudio"],
+      "enabled": false
+    },
+    {
+      "description": "F5-TTS: pinned at 1.1.20 per ADR-0002; manual upgrade only",
+      "matchPackageNames": ["f5-tts"],
+      "enabled": false
+    },
+    {
+      "description": "Celery: pinned at 5.6.3; blocked on Python 3.14 support (ADR-0006)",
+      "matchPackageNames": ["celery"],
+      "enabled": false
+    },
+    {
+      "description": "redis-py: pinned at 5.2.1 by Celery constraint",
+      "matchPackageNames": ["redis"],
+      "enabled": false
+    },
+    {
+      "description": "SQLAlchemy: 2.0.x patches OK; 2.1+ needs ADR",
+      "matchPackageNames": ["sqlalchemy"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+# GPU worker overlay. Usage:
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.gpu.yml up
+# Requires NVIDIA container runtime: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/
+
+name: lecturevoice
+
+services:
+  worker-gpu:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.gpu
+    restart: unless-stopped
+    env_file: ../backend/.env
+    depends_on:
+      valkey:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # Scale GPU workers: docker compose ... up --scale worker-gpu=N

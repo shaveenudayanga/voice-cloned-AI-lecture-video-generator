@@ -1,0 +1,107 @@
+[project]
+name = "lecturevoice-backend"
+version = "0.1.0"
+description = "LectureVoice backend API and workers"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.13,<3.14"
+
+dependencies = [
+    # Web framework
+    "fastapi>=0.135.0,<0.137",
+    "uvicorn[standard]>=0.34.0",
+    "pydantic>=2.10,<3",
+    "pydantic-settings>=2.6,<3",
+    # Database
+    # Upgrade path: 2.0.x patch auto-merged by Renovate; 2.1 requires ADR per §5.1
+    "sqlalchemy==2.0.51",
+    "alembic>=1.14,<2",
+    "asyncpg>=0.30,<1",
+    # Task queue
+    # Constrains Python <=3.13 and redis-py <=5.2.1 — see ADR-0006
+    "celery==5.6.3",
+    "redis==5.2.1",
+    # Observability
+    "structlog>=25.0,<26",
+    "opentelemetry-distro>=0.50",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.29",
+    # HTTP client
+    "httpx>=0.28,<1",
+    # Retry / resilience
+    "tenacity>=9.0,<10",
+    # Object storage
+    "aioboto3>=14.0",
+    # Rate limiting
+    "slowapi>=0.1.9",
+    # ML / media (CPU worker only — GPU worker uses Dockerfile.gpu)
+    "pymupdf>=1.24,<2",
+    "faster-whisper>=1.1,<2",
+    # LLM
+    "google-genai>=1.0,<2",
+    "python-multipart>=0.0.32",
+]
+
+[project.optional-dependencies]
+gpu = [
+    # Upgrade path: reconsider at 2.12.2+ per ADR-0006 §torch-pin
+    "torch==2.11.0",
+    "torchaudio==2.11.0",
+    "f5-tts==1.1.20",
+    "coqui-tts>=0.27,<1",
+    "soundfile>=0.13",
+]
+dev = [
+    "pytest>=8.0,<9",
+    "pytest-asyncio>=0.25,<1",
+    "pytest-cov>=6.0",
+    "httpx>=0.28",
+    "ruff>=0.9",
+    "mypy>=1.13,<2",
+    "pip-audit>=2.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0,<9",
+    "pytest-asyncio>=0.25,<1",
+    "pytest-cov>=6.0",
+    "ruff>=0.9",
+    "mypy>=1.13,<2",
+    "pip-audit>=2.8",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "--cov=app --cov-report=term-missing --cov-fail-under=0"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "S", "B", "A", "C4", "PT", "RUF"]
+ignore = [
+    "S101",   # assert in tests
+    "S603",   # subprocess with list args is safe (§7.4)
+    "S607",   # partial path in subprocess — controlled paths only
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S106"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["celery.*", "kombu.*", "aioboto3.*", "botocore.*", "fitz.*", "f5_tts.*", "TTS.*", "faster_whisper.*", "soundfile.*", "google.*"]
+ignore_missing_imports = true

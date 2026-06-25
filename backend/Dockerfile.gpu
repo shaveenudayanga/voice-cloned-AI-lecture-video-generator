@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: Apache-2.0
+# GPU worker image. Requires NVIDIA container runtime on the Docker host.
+# Base: CUDA 12.4 + Ubuntu 22.04 + Python 3.13.
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04 AS base
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.13 \
+    python3.13-dev \
+    python3-pip \
+    ffmpeg \
+    libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock ./
+
+# Install all deps including [gpu] extras (torch, f5-tts, coqui-tts, faster-whisper)
+RUN uv sync --frozen --no-dev --extra gpu
+
+COPY app/ ./app/
+
+# The GPU worker loads TTS and Whisper models into VRAM at startup — warm worker pattern (§7.3).
+# VRAM_BUDGET_GB controls whether both models load simultaneously or alternate (low-VRAM devices).
+CMD ["uv", "run", "celery", "-A", "app.tasks.celery_app", "worker", \
+     "--loglevel=info", "--queues=gpu", "--concurrency=1"]

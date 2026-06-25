@@ -1,0 +1,116 @@
+# SPDX-License-Identifier: Apache-2.0
+# Base compose file. For GPU workers add: -f docker-compose.gpu.yml
+# For production add: -f docker-compose.prod.yml
+# Usage: docker compose -f infra/docker-compose.yml up
+
+name: lecturevoice
+
+x-backend-env: &backend-env
+  env_file: ../backend/.env
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lecturevoice
+      POSTGRES_PASSWORD: lecturevoice
+      POSTGRES_DB: lecturevoice
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lecturevoice"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "6379:6379"
+
+  seaweedfs:
+    # Pin by digest in production overlay for reproducibility (§2 rule 11)
+    image: chrislusf/seaweedfs:latest
+    restart: unless-stopped
+    command: server -s3 -s3.port=8333 -dir=/data
+    volumes:
+      - seaweedfs_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9333/cluster/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    ports:
+      - "9333:9333"
+      - "8333:8333"
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      target: api
+    restart: unless-stopped
+    <<: *backend-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/live')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  worker-cpu:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      target: worker-cpu
+    restart: unless-stopped
+    <<: *backend-env
+    depends_on:
+      valkey:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+      NEXT_PUBLIC_DEPLOYMENT_MODE: web
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+  valkey_data:
+  seaweedfs_data:
