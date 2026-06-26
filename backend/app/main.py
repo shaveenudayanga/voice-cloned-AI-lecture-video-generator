@@ -6,7 +6,7 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import health, jobs, projects, scripts, slides, voices
+from app.api.v1 import audio, health, jobs, projects, scripts, slides, voices
 from app.core.config import settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
@@ -53,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(slides.router, prefix=prefix, tags=["slides"])
     app.include_router(scripts.router, prefix=prefix, tags=["scripts"])
     app.include_router(voices.router, prefix=prefix, tags=["voices"])
+    app.include_router(audio.router, prefix=prefix, tags=["audio"])
     app.include_router(jobs.router, prefix=prefix, tags=["jobs"])
 
     return app

@@ -110,6 +110,38 @@ class ScriptGenerateResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Voice preview schema
+# ---------------------------------------------------------------------------
+
+
+class VoicePreviewResponse(BaseModel):
+    job_id: uuid.UUID
+    voice_profile_id: uuid.UUID
+    status: Literal["queued"]
+
+
+# ---------------------------------------------------------------------------
+# Audio synthesis schemas
+# ---------------------------------------------------------------------------
+
+
+class AudioSynthesizeResponse(BaseModel):
+    job_ids: list[uuid.UUID]
+    slide_count: int
+    status: Literal["queued"]
+
+
+class AudioClipItem(BaseModel):
+    id: uuid.UUID
+    slide_id: uuid.UUID
+    order_index: int
+    audio_blob_key: str
+    duration_seconds: float
+    engine_used: str
+    synthesis_fingerprint: str
+
+
+# ---------------------------------------------------------------------------
 # Project schemas
 # ---------------------------------------------------------------------------
 

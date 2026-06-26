@@ -24,6 +24,8 @@ class VoiceProfileModel(Base):
     # JSON-serialised dict of engine-specific params
     tts_params: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Blob key of the one-sentence preview synthesized after recording (Phase 5, nullable until synthesized)
+    preview_audio_blob_key: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

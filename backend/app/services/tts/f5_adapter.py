@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """
-F5-TTS adapter. License: CC-BY-NC-4.0 (non-commercial use only — see docs/LICENSE_AUDIT.md).
-Model is loaded once at worker startup via warm_up(); never inside a task body.
+F5-TTS adapter. License: CC-BY-NC-4.0 (non-commercial only — see docs/LICENSE_AUDIT.md).
+
+Model is loaded via model_manager once at worker startup; never inside a task body.
+FP16 is enforced in model_manager._load_f5() for 4 GB VRAM devices.
 """
 import asyncio
-import tempfile
+import wave
 from pathlib import Path
 from typing import Any
 
@@ -14,56 +16,124 @@ from app.services.tts.interface import SynthesisResult
 
 logger = structlog.get_logger(__name__)
 
-_model: Any = None
+_PREVIEW_TEXT = (
+    "Hello, this is a preview of my cloned voice for lecture recordings. "
+    "How does this sound?"
+)
+
+_ENGINE_NAME = "f5"
 
 
-def _get_model() -> Any:
-    global _model
-    if _model is None:
-        from f5_tts.api import F5TTS  # type: ignore[import-untyped,unused-ignore]
-
-        logger.info("f5tts_model_loading")
-        _model = F5TTS()
-        logger.info("f5tts_model_loaded")
-    return _model
-
-
-class F5TTSEngine:
-    """F5-TTS voice cloning engine."""
-
-    def warm_up(self) -> None:
-        _get_model()
+class F5TTSAdapter:
+    """F5-TTS voice cloning engine. Delegates model management to model_manager."""
 
     async def synthesize(
         self,
         text: str,
-        reference_audio: bytes,
-        params: dict[str, object] | None = None,
+        reference_audio_path: Path,
+        output_path: Path,
+        pronunciation_hints: str | None = None,
     ) -> SynthesisResult:
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self._synthesize_sync, text, reference_audio, params or {})
+        return await loop.run_in_executor(
+            None,
+            self._synthesize_sync,
+            text,
+            reference_audio_path,
+            output_path,
+        )
 
-    def _synthesize_sync(self, text: str, reference_audio: bytes, params: dict[str, object]) -> SynthesisResult:
-        import soundfile as sf  # type: ignore[import-untyped,unused-ignore]
+    async def synthesize_preview(
+        self,
+        text: str,
+        reference_audio_path: Path,
+        output_path: Path,
+    ) -> SynthesisResult:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            self._synthesize_sync,
+            _PREVIEW_TEXT,
+            reference_audio_path,
+            output_path,
+        )
 
-        model = _get_model()
+    def _synthesize_sync(
+        self,
+        text: str,
+        reference_audio_path: Path,
+        output_path: Path,
+    ) -> SynthesisResult:
+        from app.services.tts.model_manager import get_vram_free_gb, load_tts_model
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            ref_path = Path(tmpdir) / "ref.wav"
-            out_path = Path(tmpdir) / "out.wav"
-            ref_path.write_bytes(reference_audio)
+        model = load_tts_model()
+        used_gpu = _is_cuda(model)
 
-            model.infer(
-                ref_file=str(ref_path),
-                ref_text="",
-                gen_text=text,
-                file_wave=str(out_path),
-                **params,
-            )
+        try:
+            _run_f5_infer(model, text, reference_audio_path, output_path)
+        except Exception as exc:
+            if _is_oom(exc):
+                free_gb = get_vram_free_gb()
+                logger.warning(
+                    "f5tts_cuda_oom_cpu_fallback",
+                    free_vram_gb=free_gb,
+                    error=str(exc),
+                )
+                # CPU fallback: temporary model instance, not cached through model_manager
+                import torch
+                from f5_tts.api import F5TTS
+                cpu_model = F5TTS(device="cpu", dtype=torch.float32)
+                _run_f5_infer(cpu_model, text, reference_audio_path, output_path)
+                used_gpu = False
+            else:
+                raise
 
-            audio_data, sample_rate = sf.read(str(out_path))
-            duration_s = len(audio_data) / sample_rate
-            wav_bytes = out_path.read_bytes()
+        duration = _wav_duration(output_path)
+        logger.info("f5tts_synthesized", duration_s=duration, used_gpu=used_gpu)
+        return SynthesisResult(
+            output_path=output_path,
+            duration_seconds=duration,
+            engine_used=_ENGINE_NAME,
+            used_gpu=used_gpu,
+        )
 
-        logger.info("f5tts_synthesized", duration_s=duration_s)
-        return SynthesisResult(audio_wav=wav_bytes, duration_s=duration_s, sample_rate=sample_rate)
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _run_f5_infer(model: Any, text: str, ref_path: Path, out_path: Path) -> None:
+    model.infer(
+        ref_file=str(ref_path),
+        ref_text="",
+        gen_text=text,
+        file_wave=str(out_path),
+    )
+
+
+def _is_oom(exc: Exception) -> bool:
+    try:
+        import torch
+        return isinstance(exc, torch.cuda.OutOfMemoryError)
+    except Exception:
+        return False
+
+
+def _is_cuda(model: Any) -> bool:
+    """Return True if the model appears to be on a CUDA device."""
+    try:
+        import torch
+        # F5TTS stores its internal model; check the first parameter device
+        params = list(model.ema_model.parameters())
+        return bool(params and params[0].device.type == "cuda")
+    except Exception:
+        try:
+            return bool(torch.cuda.is_available())
+        except Exception:
+            return False
+
+
+def _wav_duration(path: Path) -> float:
+    with wave.open(str(path)) as wf:
+        return float(wf.getnframes()) / float(wf.getframerate())

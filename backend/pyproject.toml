@@ -107,5 +107,5 @@ ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["celery.*", "kombu.*", "aioboto3.*", "botocore.*", "fitz.*", "f5_tts.*", "TTS.*", "faster_whisper.*", "soundfile.*", "google.*"]
+module = ["celery.*", "kombu.*", "aioboto3.*", "botocore.*", "fitz.*", "f5_tts.*", "TTS.*", "faster_whisper.*", "soundfile.*", "google.*", "torch.*", "pynvml.*"]
 ignore_missing_imports = true

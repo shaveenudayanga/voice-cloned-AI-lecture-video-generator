@@ -5,42 +5,25 @@ from typing import Any
 
 import structlog
 
-from app.core.config import settings
 from app.domain.exceptions import TranscriptionError
 from app.services.transcription.interface import TranscriptionResult
 
 logger = structlog.get_logger(__name__)
 
-# Module-level singleton — loaded once per worker process (§7.3 warm worker)
-_model: Any = None
-
 
 def _get_model() -> Any:
-    global _model
-    if _model is None:
-        from faster_whisper import WhisperModel
+    """Return the Whisper model, loading it via model_manager (warm worker, §7.3).
 
-        # Leave VRAM headroom for F5-TTS (Phase 5). Devices with < 6 GB budget
-        # must run Whisper on CPU so the GPU remains free for TTS synthesis.
-        device = "cpu" if settings.vram_budget_gb < 6.0 else "auto"
-        compute_type = "int8" if device == "cpu" else "float16"
-        logger.info(
-            "whisper_model_loading",
-            size=settings.whisper_model_size,
-            device=device,
-            compute_type=compute_type,
-        )
-        _model = WhisperModel(
-            settings.whisper_model_size,
-            device=device,
-            compute_type=compute_type,
-        )
-        logger.info("whisper_model_loaded", size=settings.whisper_model_size)
-    return _model
+    model_manager handles VRAM eviction of TTS if VRAM_BUDGET_GB < 6.0,
+    ensuring F5-TTS and Whisper never coexist on low-VRAM devices.
+    """
+    from app.services.tts.model_manager import load_whisper_model
+
+    return load_whisper_model()
 
 
 class WhisperTranscriber:
-    """faster-whisper adapter. Model is loaded once at worker startup (§7.3)."""
+    """faster-whisper adapter. Model is loaded once per worker via model_manager."""
 
     async def transcribe(self, audio_bytes: bytes) -> TranscriptionResult:
         import asyncio

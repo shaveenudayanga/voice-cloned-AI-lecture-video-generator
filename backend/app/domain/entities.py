@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Literal
 
-from app.domain.value_objects import AudioFingerprint, BlobKey
+from app.domain.value_objects import BlobKey
 
 WizardStepLiteral = Literal["upload", "voice", "scripts", "audio", "render", "done"]
 JobStatusLiteral = Literal["pending", "running", "success", "failed", "retrying"]
@@ -38,6 +38,8 @@ class VoiceProfile:
     is_default: bool
     created_at: datetime
     updated_at: datetime
+    # Blob key of the one-sentence clone-quality preview synthesized after recording (Phase 5)
+    preview_audio_blob_key: str | None = None
 
 
 @dataclass
@@ -80,13 +82,18 @@ class Script:
 
 @dataclass
 class AudioClip:
+    """Synthesized audio for one slide script. Fingerprint drives cache-skip (§7.3 lever 5)."""
+
     id: uuid.UUID
+    project_id: uuid.UUID
     slide_id: uuid.UUID
     script_id: uuid.UUID
     voice_profile_id: uuid.UUID
     audio_blob: BlobKey
-    duration_s: float
-    fingerprint: AudioFingerprint
+    duration_seconds: float
+    engine_used: str
+    # SHA-256 of (script_hash + voice_profile_id + tts_engine + tts_params) — cache-skip key
+    synthesis_fingerprint: str
     created_at: datetime
 
 

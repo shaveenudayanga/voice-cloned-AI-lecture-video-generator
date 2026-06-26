@@ -11,7 +11,13 @@ from app.db.repositories.project_repository import ProjectRepository
 from app.db.repositories.voice_profile_repository import VoiceProfileRepository
 from app.domain.entities import VoiceProfile
 from app.domain.value_objects import BlobKey
-from app.schemas import VoicePatchRequest, VoiceProfileDetail, VoiceProfileSummary, VoiceUploadResponse
+from app.schemas import (
+    VoicePatchRequest,
+    VoicePreviewResponse,
+    VoiceProfileDetail,
+    VoiceProfileSummary,
+    VoiceUploadResponse,
+)
 from app.services.audio.mime import sniff_audio_mime
 from app.services.storage.factory import get_blob_store
 from app.tasks.voice_ingestion import ingest_voice
@@ -116,6 +122,7 @@ async def create_voice_profile(
     )
     synthesize_preview.delay(
         voice_profile_id=str(profile.id),
+        user_id=str(user_id),
         job_id=str(preview_job.id),
     )
 
@@ -210,3 +217,38 @@ async def delete_voice_profile(
 
     await voice_repo.delete(profile_id)
     await session.commit()
+
+
+@router.post("/voices/{profile_id}/preview", status_code=202, response_model=VoicePreviewResponse)
+async def trigger_voice_preview(
+    profile_id: uuid.UUID,
+    auth: AuthDep,
+    user_id: UserIdDep,
+    session: SessionDep,
+) -> VoicePreviewResponse:
+    """Synthesize the one-sentence clone-quality test for a VoiceProfile.
+
+    Can be called after upload (auto-triggered) or manually when the user wants
+    to re-verify their clone before starting a new lecture.
+    """
+    voice_repo = VoiceProfileRepository(session)
+    job_repo = JobRepository(session)
+
+    profile = await voice_repo.get(profile_id)
+    if profile is None or profile.user_id != user_id:
+        raise HTTPException(status_code=404, detail="VoiceProfile not found")
+
+    job = await job_repo.create(task_name="voice_preview", related_entity_id=profile.id)
+    await session.commit()
+
+    synthesize_preview.delay(
+        voice_profile_id=str(profile.id),
+        user_id=str(user_id),
+        job_id=str(job.id),
+    )
+
+    return VoicePreviewResponse(
+        job_id=job.id,
+        voice_profile_id=profile.id,
+        status="queued",
+    )

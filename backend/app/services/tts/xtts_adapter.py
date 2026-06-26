@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """
-XTTS-v2 adapter via coqui-tts (idiap fork). License: CPML (non-commercial).
-PyTorch >=2.6 requires torch.serialization.add_safe_globals workaround — encapsulated here.
+XTTS-v2 fallback adapter via coqui-tts (idiap fork). License: CPML (non-commercial).
+
+Model loading is delegated to model_manager which applies the
+torch.serialization.add_safe_globals workaround required for PyTorch >= 2.6.
 """
 import asyncio
-import tempfile
+import wave
 from pathlib import Path
 from typing import Any
 
@@ -14,64 +16,85 @@ from app.services.tts.interface import SynthesisResult
 
 logger = structlog.get_logger(__name__)
 
-_model: Any = None
+_PREVIEW_TEXT = (
+    "Hello, this is a preview of my cloned voice for lecture recordings. "
+    "How does this sound?"
+)
+
+_ENGINE_NAME = "xtts"
 
 
-def _get_model() -> Any:
-    global _model
-    if _model is None:
-        import torch
-        from TTS.api import TTS  # type: ignore[import-untyped,unused-ignore]
-        from TTS.tts.configs.xtts_config import XttsConfig  # type: ignore[import-untyped,unused-ignore]
-        from TTS.tts.models.xtts import XttsAudioConfig  # type: ignore[import-untyped,unused-ignore]
-
-        # Workaround: PyTorch >=2.6 restricts deserialization of arbitrary classes.
-        # XTTS-v2 weight files embed these config classes — we must allowlist them.
-        torch.serialization.add_safe_globals([XttsConfig, XttsAudioConfig])
-
-        logger.info("xtts_model_loading")
-        _model = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2").to(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        )
-        logger.info("xtts_model_loaded")
-    return _model
-
-
-class XTTSEngine:
-    """XTTS-v2 fallback TTS engine."""
-
-    def warm_up(self) -> None:
-        _get_model()
+class XTTSAdapter:
+    """XTTS-v2 fallback TTS engine. Delegates model management to model_manager."""
 
     async def synthesize(
         self,
         text: str,
-        reference_audio: bytes,
-        params: dict[str, object] | None = None,
+        reference_audio_path: Path,
+        output_path: Path,
+        pronunciation_hints: str | None = None,
     ) -> SynthesisResult:
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self._synthesize_sync, text, reference_audio, params or {})
+        return await loop.run_in_executor(
+            None,
+            self._synthesize_sync,
+            text,
+            reference_audio_path,
+            output_path,
+        )
 
-    def _synthesize_sync(self, text: str, reference_audio: bytes, params: dict[str, object]) -> SynthesisResult:
-        import soundfile as sf  # type: ignore[import-untyped,unused-ignore]
+    async def synthesize_preview(
+        self,
+        text: str,
+        reference_audio_path: Path,
+        output_path: Path,
+    ) -> SynthesisResult:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            self._synthesize_sync,
+            _PREVIEW_TEXT,
+            reference_audio_path,
+            output_path,
+        )
 
-        model = _get_model()
+    def _synthesize_sync(
+        self,
+        text: str,
+        reference_audio_path: Path,
+        output_path: Path,
+    ) -> SynthesisResult:
+        from app.services.tts.model_manager import load_tts_model
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            ref_path = Path(tmpdir) / "ref.wav"
-            out_path = Path(tmpdir) / "out.wav"
-            ref_path.write_bytes(reference_audio)
+        model = load_tts_model()
+        used_gpu = _is_cuda(model)
 
-            model.tts_to_file(
-                text=text,
-                speaker_wav=str(ref_path),
-                language=params.get("language", "en"),
-                file_path=str(out_path),
-            )
+        model.tts_to_file(
+            text=text,
+            speaker_wav=str(reference_audio_path),
+            language="en",
+            file_path=str(output_path),
+        )
 
-            audio_data, sample_rate = sf.read(str(out_path))
-            duration_s = len(audio_data) / sample_rate
-            wav_bytes = out_path.read_bytes()
+        duration = _wav_duration(output_path)
+        logger.info("xtts_synthesized", duration_s=duration, used_gpu=used_gpu)
+        return SynthesisResult(
+            output_path=output_path,
+            duration_seconds=duration,
+            engine_used=_ENGINE_NAME,
+            used_gpu=used_gpu,
+        )
 
-        logger.info("xtts_synthesized", duration_s=duration_s)
-        return SynthesisResult(audio_wav=wav_bytes, duration_s=duration_s, sample_rate=sample_rate)
+
+def _is_cuda(model: Any) -> bool:
+    """Return True if the XTTS model is on a CUDA device."""
+    try:
+        # TTS objects expose .device
+        return str(getattr(model, "device", "cpu")) == "cuda"
+    except Exception:
+        return False
+
+
+def _wav_duration(path: Path) -> float:
+    with wave.open(str(path)) as wf:
+        return float(wf.getnframes()) / float(wf.getframerate())

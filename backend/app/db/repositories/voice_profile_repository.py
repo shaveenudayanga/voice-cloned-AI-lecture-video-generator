@@ -25,6 +25,7 @@ def _to_entity(m: VoiceProfileModel) -> VoiceProfile:
         is_default=m.is_default,
         created_at=m.created_at,
         updated_at=m.updated_at,
+        preview_audio_blob_key=m.preview_audio_blob_key,
     )
 
 
@@ -117,6 +118,14 @@ class VoiceProfileRepository:
             update(VoiceProfileModel)
             .where(VoiceProfileModel.id == profile_id)
             .values(style_reference_transcript=transcript, updated_at=datetime.now(UTC))
+        )
+
+    async def update_preview_blob_key(self, profile_id: uuid.UUID, blob_key: str) -> None:
+        """Store the preview audio blob key after voice_preview task completes."""
+        await self._session.execute(
+            update(VoiceProfileModel)
+            .where(VoiceProfileModel.id == profile_id)
+            .values(preview_audio_blob_key=blob_key, updated_at=datetime.now(UTC))
         )
 
     async def delete(self, profile_id: uuid.UUID) -> None:
