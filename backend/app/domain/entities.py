@@ -103,7 +103,9 @@ class VideoArtifact:
     project_id: uuid.UUID
     video_blob: BlobKey
     srt_blob: BlobKey | None
-    total_duration_s: float
+    total_duration_seconds: float
+    slide_count: int
+    ffmpeg_version: str
     created_at: datetime
 
 

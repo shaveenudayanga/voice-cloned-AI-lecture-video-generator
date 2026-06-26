@@ -105,6 +105,15 @@ class Settings(BaseSettings):
         description="faster-whisper model size for voice transcription",
     )
 
+    # Video assembly
+    ffmpeg_hwaccel: bool = Field(
+        default=False,
+        description=(
+            "Prepend -hwaccel auto to ffmpeg encode commands. "
+            "Opt-in only — the default (false) works on any machine without a GPU."
+        ),
+    )
+
     # Celery
     celery_task_always_eager: bool = Field(
         default=False,

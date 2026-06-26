@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 ffmpeg video assembler. Each slide image is shown for exactly the duration of its audio clip.
-ffmpeg is called via subprocess with list args — never shell=True with user-supplied input.
+All ffmpeg/ffprobe calls use subprocess with list args — never shell=True.
 """
 import asyncio
 import subprocess
@@ -15,96 +15,155 @@ from app.domain.exceptions import VideoAssemblyError
 
 logger = structlog.get_logger(__name__)
 
+# Timeout constants (seconds)
+_SEGMENT_TIMEOUT = 300
+_CONCAT_TIMEOUT = 600
+
 
 @dataclass
 class SlideAudioPair:
-    slide_png: bytes
-    audio_wav: bytes
-    duration_s: float
+    order_index: int
+    image_path: Path
+    audio_path: Path
+    script_text: str
+    duration_seconds: float
 
 
-async def assemble_video(pairs: list[SlideAudioPair]) -> tuple[bytes, str]:
-    """
-    Assemble ordered (slide PNG, audio WAV) pairs into an MP4.
-    Returns (mp4_bytes, srt_content).
-    """
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _assemble_sync, pairs)
+@dataclass
+class AssemblyResult:
+    output_path: Path
+    srt_path: Path
+    total_duration_seconds: float
+    ffmpeg_version: str
 
 
-def _assemble_sync(pairs: list[SlideAudioPair]) -> tuple[bytes, str]:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp = Path(tmpdir)
-        concat_lines: list[str] = []
-        srt_entries: list[str] = []
-        cumulative_s = 0.0
+def _get_ffmpeg_version() -> str:
+    """Return the first line of `ffmpeg -version` output."""
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-version"],
+            capture_output=True,
+            timeout=15,
+        )
+        first_line = result.stdout.decode("utf-8", errors="replace").splitlines()[0]
+        return first_line
+    except Exception as exc:
+        return f"unknown ({exc})"
 
-        for i, pair in enumerate(pairs):
-            img_path = tmp / f"slide_{i:04d}.png"
-            wav_path = tmp / f"audio_{i:04d}.wav"
-            seg_path = tmp / f"seg_{i:04d}.mp4"
 
-            img_path.write_bytes(pair.slide_png)
-            wav_path.write_bytes(pair.audio_wav)
+def _run_ffmpeg(cmd: list[str], timeout: int) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(cmd, capture_output=True, timeout=timeout)
 
-            # Build a silent video of exactly duration_s from the still image + audio
-            cmd = [
+
+class VideoAssembler:
+    """Assembles a list of (slide PNG, audio WAV) pairs into a single MP4 via ffmpeg."""
+
+    def __init__(self, use_hwaccel: bool = False) -> None:
+        self._use_hwaccel = use_hwaccel
+
+    async def assemble(
+        self,
+        slides: list[SlideAudioPair],
+        output_path: Path,
+        srt_output_path: Path,
+    ) -> AssemblyResult:
+        """Run ffmpeg assembly in a thread pool so the event loop stays unblocked."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            self._assemble_sync,
+            slides,
+            output_path,
+            srt_output_path,
+        )
+
+    def _assemble_sync(
+        self,
+        slides: list[SlideAudioPair],
+        output_path: Path,
+        srt_output_path: Path,
+    ) -> AssemblyResult:
+        ffmpeg_version = _get_ffmpeg_version()
+        total_duration = 0.0
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            segment_paths: list[Path] = []
+
+            for pair in sorted(slides, key=lambda p: p.order_index):
+                seg_path = tmp / f"seg_{pair.order_index:04d}.mp4"
+                self._encode_segment(pair, seg_path)
+                segment_paths.append(seg_path)
+                total_duration += pair.duration_seconds
+
+            # Write concat list
+            concat_file = tmp / "concat.txt"
+            concat_file.write_text(
+                "\n".join(f"file '{p}'" for p in segment_paths),
+                encoding="utf-8",
+            )
+
+            # Concatenate segments
+            concat_cmd = [
                 "ffmpeg", "-y",
-                "-loop", "1",
-                "-i", str(img_path),
-                "-i", str(wav_path),
-                "-c:v", "libx264",
-                "-tune", "stillimage",
-                "-c:a", "aac",
-                "-b:a", "128k",
-                "-pix_fmt", "yuv420p",
-                "-shortest",
-                "-hwaccel", "auto",
-                str(seg_path),
+                "-f", "concat",
+                "-safe", "0",
+                "-i", str(concat_file),
+                "-c", "copy",
+                str(output_path),
             ]
-            result = _run(cmd)
-            if result.returncode != 0:
-                raise VideoAssemblyError(
-                    f"ffmpeg segment {i} failed: {result.stderr.decode()}"
-                )
+            concat_result = _run_ffmpeg(concat_cmd, _CONCAT_TIMEOUT)
+            if concat_result.returncode != 0:
+                stderr = concat_result.stderr.decode("utf-8", errors="replace")
+                raise VideoAssemblyError(f"ffmpeg concat failed:\n{stderr}")
 
-            concat_lines.append(f"file '{seg_path}'")
+        # Generate SRT alongside (pure Python — no subprocess)
+        from app.services.video.srt_generator import generate_srt
 
-            # SRT entry
-            start = _fmt_srt_time(cumulative_s)
-            end = _fmt_srt_time(cumulative_s + pair.duration_s)
-            srt_entries.append(f"{i + 1}\n{start} --> {end}\n(slide {i + 1})\n")
-            cumulative_s += pair.duration_s
+        srt_content = generate_srt(slides)
+        srt_output_path.write_text(srt_content, encoding="utf-8")
 
-        concat_file = tmp / "concat.txt"
-        concat_file.write_text("\n".join(concat_lines))
-        output_path = tmp / "output.mp4"
+        logger.info(
+            "video_assembled",
+            slide_count=len(slides),
+            total_duration_s=total_duration,
+            output=str(output_path),
+            ffmpeg_version=ffmpeg_version,
+        )
+        return AssemblyResult(
+            output_path=output_path,
+            srt_path=srt_output_path,
+            total_duration_seconds=total_duration,
+            ffmpeg_version=ffmpeg_version,
+        )
 
-        cmd = [
-            "ffmpeg", "-y",
-            "-f", "concat",
-            "-safe", "0",
-            "-i", str(concat_file),
-            "-c", "copy",
-            str(output_path),
+    def _encode_segment(self, pair: SlideAudioPair, seg_path: Path) -> None:
+        """Encode one (slide PNG + audio WAV) → MP4 segment."""
+        cmd: list[str] = ["ffmpeg", "-y"]
+
+        if self._use_hwaccel:
+            cmd += ["-hwaccel", "auto"]
+
+        cmd += [
+            "-loop", "1",
+            "-i", str(pair.image_path),
+            "-i", str(pair.audio_path),
+            "-c:v", "libx264",
+            "-tune", "stillimage",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-pix_fmt", "yuv420p",
+            "-vf", (
+                "scale=1920:1080:force_original_aspect_ratio=decrease,"
+                "pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
+            ),
+            "-shortest",
+            str(seg_path),
         ]
-        result = _run(cmd)
+
+        result = _run_ffmpeg(cmd, _SEGMENT_TIMEOUT)
         if result.returncode != 0:
-            raise VideoAssemblyError(f"ffmpeg concat failed: {result.stderr.decode()}")
-
-        mp4_bytes = output_path.read_bytes()
-        srt_content = "\n".join(srt_entries)
-        logger.info("video_assembled", slides=len(pairs), duration_s=cumulative_s, size=len(mp4_bytes))
-        return mp4_bytes, srt_content
-
-
-def _run(cmd: list[str]) -> subprocess.CompletedProcess[bytes]:
-    return subprocess.run(cmd, capture_output=True)
-
-
-def _fmt_srt_time(seconds: float) -> str:
-    h = int(seconds // 3600)
-    m = int((seconds % 3600) // 60)
-    s = int(seconds % 60)
-    ms = int((seconds % 1) * 1000)
-    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+            stderr = result.stderr.decode("utf-8", errors="replace")
+            raise VideoAssemblyError(
+                f"ffmpeg segment {pair.order_index} failed:\n{stderr}"
+            )

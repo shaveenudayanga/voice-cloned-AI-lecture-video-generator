@@ -142,6 +142,28 @@ class AudioClipItem(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Video assembly schemas
+# ---------------------------------------------------------------------------
+
+
+class VideoAssembleResponse(BaseModel):
+    job_id: uuid.UUID
+    project_id: uuid.UUID
+    status: Literal["queued"]
+
+
+class VideoArtifactResponse(BaseModel):
+    id: uuid.UUID
+    project_id: uuid.UUID
+    video_blob_key: str
+    srt_blob_key: str | None
+    total_duration_seconds: float
+    slide_count: int
+    ffmpeg_version: str
+    created_at: datetime
+
+
+# ---------------------------------------------------------------------------
 # Project schemas
 # ---------------------------------------------------------------------------
 
