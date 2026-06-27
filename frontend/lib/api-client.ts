@@ -12,7 +12,9 @@ import type {
   ScriptGenerateResponse,
   ScriptListItem,
   ScriptResponse,
+  SlideAudioSynthesizeResponse,
   SlideItem,
+  SlideScriptRegenerateResponse,
   SlideUploadResponse,
   VideoArtifactResponse,
   VideoAssembleResponse,
@@ -152,6 +154,13 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify(body),
       }),
+    getById: (projectId: string, scriptId: string) =>
+      apiFetch<ScriptResponse>(`/projects/${projectId}/scripts/${scriptId}`),
+    regenerateSlide: (projectId: string, slideId: string) =>
+      apiFetch<SlideScriptRegenerateResponse>(
+        `/projects/${projectId}/scripts/${slideId}/regenerate`,
+        { method: "POST" }
+      ),
   },
 
   // -------------------------------------------------------------------------
@@ -161,6 +170,11 @@ export const api = {
     synthesize: (projectId: string) =>
       apiFetch<AudioSynthesizeResponse>(
         `/projects/${projectId}/audio/synthesize`,
+        { method: "POST" }
+      ),
+    synthesizeSlide: (projectId: string, slideId: string) =>
+      apiFetch<SlideAudioSynthesizeResponse>(
+        `/projects/${projectId}/audio/${slideId}/synthesize`,
         { method: "POST" }
       ),
     list: (projectId: string) =>

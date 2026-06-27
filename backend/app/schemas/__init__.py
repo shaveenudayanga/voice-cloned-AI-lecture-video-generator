@@ -164,6 +164,27 @@ class VideoArtifactResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Per-slide targeted operation schemas (Phase 8)
+# ---------------------------------------------------------------------------
+
+
+class SlideScriptRegenerateResponse(BaseModel):
+    """Response for POST /projects/{id}/scripts/{slide_id}/regenerate."""
+
+    job_id: uuid.UUID
+    slide_id: uuid.UUID
+    status: Literal["queued"]
+
+
+class SlideAudioSynthesizeResponse(BaseModel):
+    """Response for POST /projects/{id}/audio/{slide_id}/synthesize."""
+
+    job_id: uuid.UUID
+    slide_id: uuid.UUID
+    status: Literal["queued"]
+
+
+# ---------------------------------------------------------------------------
 # Project schemas
 # ---------------------------------------------------------------------------
 

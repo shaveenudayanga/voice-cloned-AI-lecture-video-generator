@@ -11,7 +11,7 @@ from app.db.repositories.project_repository import ProjectRepository
 from app.db.repositories.script_repository import ScriptRepository
 from app.db.repositories.slide_repository import SlideRepository
 from app.domain.entities import AudioClip
-from app.schemas import AudioClipItem, AudioSynthesizeResponse
+from app.schemas import AudioClipItem, AudioSynthesizeResponse, SlideAudioSynthesizeResponse
 from app.tasks.tts_synthesis import synthesize_slide
 
 router = APIRouter()
@@ -104,6 +104,73 @@ async def trigger_audio_synthesis(
     return AudioSynthesizeResponse(
         job_ids=job_ids,
         slide_count=len(slides),
+        status="queued",
+    )
+
+
+@router.post(
+    "/projects/{project_id}/audio/{slide_id}/synthesize",
+    status_code=202,
+    response_model=SlideAudioSynthesizeResponse,
+)
+async def synthesize_slide_audio(
+    project_id: uuid.UUID,
+    slide_id: uuid.UUID,
+    auth: AuthDep,
+    user_id: UserIdDep,
+    session: SessionDep,
+) -> SlideAudioSynthesizeResponse:
+    """Enqueue TTS synthesis for a single slide only.
+
+    Separate from the fan-out POST /audio/synthesize — targets one slide,
+    returns one job_id. Cache-skip still applies inside the task.
+    Requires the slide to have a script and the project to have voice_profile_id set.
+    """
+    project_repo = ProjectRepository(session)
+    slide_repo = SlideRepository(session)
+    script_repo = ScriptRepository(session)
+    job_repo = JobRepository(session)
+
+    project = await project_repo.get(project_id)
+    if project is None or project.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if project.voice_profile_id is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Project has no voice profile selected. Set voice_profile_id first.",
+        )
+
+    slide = await slide_repo.get(slide_id)
+    if slide is None or slide.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Slide not found in this project")
+
+    script = await script_repo.get_by_slide(slide_id)
+    if script is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Slide has no script. Generate or save a script first.",
+        )
+
+    job = await job_repo.create(task_name="tts_synthesis", related_entity_id=slide.id)
+    await session.commit()
+
+    synthesize_slide.delay(
+        slide_id=str(slide.id),
+        project_id=str(project_id),
+        voice_profile_id=str(project.voice_profile_id),
+        job_id=str(job.id),
+    )
+
+    logger.info(
+        "slide_audio_synthesis_queued",
+        project_id=str(project_id),
+        slide_id=str(slide_id),
+        job_id=str(job.id),
+    )
+    return SlideAudioSynthesizeResponse(
+        job_id=job.id,
+        slide_id=slide.id,
         status="queued",
     )
 

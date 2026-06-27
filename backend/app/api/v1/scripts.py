@@ -15,6 +15,7 @@ from app.schemas import (
     ScriptListItem,
     ScriptPatchRequest,
     ScriptResponse,
+    SlideScriptRegenerateResponse,
 )
 from app.tasks.script_generation import generate_script
 
@@ -140,6 +141,87 @@ async def list_scripts(
             )
 
     return items
+
+
+@router.get(
+    "/projects/{project_id}/scripts/{script_id}",
+    response_model=ScriptResponse,
+)
+async def get_script(
+    project_id: uuid.UUID,
+    script_id: uuid.UUID,
+    auth: AuthDep,
+    user_id: UserIdDep,
+    session: SessionDep,
+) -> ScriptResponse:
+    """Return a single script by ID."""
+    project_repo = ProjectRepository(session)
+    project = await project_repo.get(project_id)
+    if project is None or project.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    script_repo = ScriptRepository(session)
+    script = await script_repo.get(script_id)
+    if script is None or script.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Script not found")
+
+    return _to_response(script)
+
+
+@router.post(
+    "/projects/{project_id}/scripts/{slide_id}/regenerate",
+    status_code=202,
+    response_model=SlideScriptRegenerateResponse,
+)
+async def regenerate_slide_script(
+    project_id: uuid.UUID,
+    slide_id: uuid.UUID,
+    auth: AuthDep,
+    user_id: UserIdDep,
+    session: SessionDep,
+) -> SlideScriptRegenerateResponse:
+    """Enqueue script generation for a single slide only.
+
+    Separate from the fan-out POST /scripts/generate — targets one slide,
+    returns one job_id. Requires voice_profile_id to be set on the project.
+    """
+    project_repo = ProjectRepository(session)
+    project = await project_repo.get(project_id)
+    if project is None or project.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if project.voice_profile_id is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Project has no VoiceProfile set. Assign one before generating scripts.",
+        )
+
+    slide_repo = SlideRepository(session)
+    slide = await slide_repo.get(slide_id)
+    if slide is None or slide.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Slide not found in this project")
+
+    job_repo = JobRepository(session)
+    job = await job_repo.create(task_name="script_generation", related_entity_id=slide.id)
+    await session.commit()
+
+    generate_script.delay(
+        slide_id=str(slide.id),
+        voice_profile_id=str(project.voice_profile_id),
+        job_id=str(job.id),
+    )
+
+    logger.info(
+        "slide_script_regen_queued",
+        project_id=str(project_id),
+        slide_id=str(slide_id),
+        job_id=str(job.id),
+    )
+    return SlideScriptRegenerateResponse(
+        job_id=job.id,
+        slide_id=slide.id,
+        status="queued",
+    )
 
 
 @router.patch(

@@ -73,6 +73,7 @@ export const SlideItemSchema = z.object({
   id: z.string().uuid(),
   order_index: z.number().int(),
   extracted_text: z.string(),
+  image_blob_key: z.string(),
 });
 export type SlideItem = z.infer<typeof SlideItemSchema>;
 
@@ -210,6 +211,24 @@ export const VideoArtifactResponseSchema = z.object({
   created_at: z.string(),
 });
 export type VideoArtifactResponse = z.infer<typeof VideoArtifactResponseSchema>;
+
+// ---------------------------------------------------------------------------
+// Per-slide targeted operation schemas (Phase 8)
+// ---------------------------------------------------------------------------
+
+export const SlideScriptRegenerateResponseSchema = z.object({
+  job_id: z.string().uuid(),
+  slide_id: z.string().uuid(),
+  status: z.literal("queued"),
+});
+export type SlideScriptRegenerateResponse = z.infer<typeof SlideScriptRegenerateResponseSchema>;
+
+export const SlideAudioSynthesizeResponseSchema = z.object({
+  job_id: z.string().uuid(),
+  slide_id: z.string().uuid(),
+  status: z.literal("queued"),
+});
+export type SlideAudioSynthesizeResponse = z.infer<typeof SlideAudioSynthesizeResponseSchema>;
 
 // Keep the old exported types for backward compatibility
 export const ProjectSchema = ProjectResponseSchema;

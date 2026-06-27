@@ -34,6 +34,7 @@ async def list_slides(project_id: str, auth: AuthDep, session: SessionDep) -> di
                 "id": str(s.id),
                 "order_index": s.order_index,
                 "extracted_text": s.extracted_text,
+                "image_blob_key": s.image_blob.key,
             }
             for s in slides
         ]
