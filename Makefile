@@ -37,10 +37,11 @@ up-prod: check-env ## Start production stack (adds nginx)
 logs: ## Tail all service logs
 	$(COMPOSE) logs -f
 
-test: ## Run backend unit tests
+test: ## Run backend unit tests + frontend unit tests
 	cd backend && \
 		API_KEY=test-api-key DATABASE_URL=postgresql+asyncpg://test:test@localhost/test \
 		uv run pytest tests/unit -v
+	cd frontend && pnpm test:unit
 
 test-all: ## Run all backend tests (requires running infra)
 	cd backend && \
