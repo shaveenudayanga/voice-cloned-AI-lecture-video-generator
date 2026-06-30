@@ -32,6 +32,12 @@ dependencies = [
     "aioboto3>=14.0",
     # Rate limiting
     "slowapi>=0.1.9",
+    # Metrics
+    "prometheus-client>=0.21,<1",
+    # OpenTelemetry instrumentation
+    "opentelemetry-instrumentation-fastapi>=0.50b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.50b0",
+    "opentelemetry-instrumentation-httpx>=0.50b0",
     # ML / media (CPU worker only — GPU worker uses Dockerfile.gpu)
     "pymupdf>=1.24,<2",
     "faster-whisper>=1.1,<2",

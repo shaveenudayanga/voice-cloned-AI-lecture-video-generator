@@ -2,10 +2,11 @@
 import uuid
 
 import structlog
-from fastapi import APIRouter, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
 
 from app.api.deps import AuthDep, SessionDep, UserIdDep
 from app.core.config import settings
+from app.core.rate_limit import limiter
 from app.db.repositories.job_repository import JobRepository
 from app.db.repositories.project_repository import ProjectRepository
 from app.db.repositories.voice_profile_repository import VoiceProfileRepository
@@ -56,7 +57,9 @@ def _to_detail(p: VoiceProfile) -> VoiceProfileDetail:
 
 
 @router.post("/voices", status_code=202, response_model=VoiceUploadResponse)
+@limiter.limit(settings.rate_limit_upload)
 async def create_voice_profile(
+    request: Request,
     file: UploadFile,
     auth: AuthDep,
     user_id: UserIdDep,

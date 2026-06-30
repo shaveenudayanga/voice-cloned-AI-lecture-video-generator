@@ -2,9 +2,11 @@
 import uuid
 
 import structlog
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from app.api.deps import AuthDep, SessionDep, UserIdDep
+from app.core.config import settings
+from app.core.rate_limit import limiter
 from app.db.repositories.job_repository import JobRepository
 from app.db.repositories.project_repository import ProjectRepository
 from app.db.repositories.script_repository import ScriptRepository
@@ -42,7 +44,9 @@ def _to_response(script: Script) -> ScriptResponse:
     status_code=202,
     response_model=ScriptGenerateResponse,
 )
+@limiter.limit(settings.rate_limit_generate)
 async def generate_scripts(
+    request: Request,
     project_id: uuid.UUID,
     auth: AuthDep,
     user_id: UserIdDep,
@@ -118,10 +122,7 @@ async def list_scripts(
     slides = await slide_repo.list_by_project(project_id)
 
     script_repo = ScriptRepository(session)
-    scripts_by_slide = {
-        s.slide_id: s
-        for s in await script_repo.list_by_project(project_id)
-    }
+    scripts_by_slide = {s.slide_id: s for s in await script_repo.list_by_project(project_id)}
 
     items: list[ScriptListItem] = []
     for slide in slides:

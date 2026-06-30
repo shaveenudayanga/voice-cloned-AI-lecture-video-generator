@@ -29,9 +29,7 @@ def generate_script(
     Idempotent: upserts the Script row — safe to retry and re-run.
     """
     logger.info("task_script_generation_start", slide_id=slide_id, job_id=job_id)
-    return run_async(
-        _run(slide_id=slide_id, voice_profile_id=voice_profile_id, job_id=job_id)
-    )
+    return run_async(_run(slide_id=slide_id, voice_profile_id=voice_profile_id, job_id=job_id))
 
 
 async def _run(
@@ -39,6 +37,7 @@ async def _run(
     voice_profile_id: str,
     job_id: str,
 ) -> dict[str, object]:
+    from app.core.config import settings
     from app.db.repositories.job_repository import JobRepository
     from app.db.repositories.script_repository import ScriptRepository
     from app.db.repositories.slide_repository import SlideRepository
@@ -85,9 +84,7 @@ async def _run(
         style_reference: str | None = profile.style_reference_transcript or None
         if profile.extra_style_sample:
             style_reference = (
-                f"{style_reference}\n\n{profile.extra_style_sample}"
-                if style_reference
-                else profile.extra_style_sample
+                f"{style_reference}\n\n{profile.extra_style_sample}" if style_reference else profile.extra_style_sample
             )
 
         # Carry forward any user-edited pronunciation hints from a previous script version
@@ -99,12 +96,19 @@ async def _run(
 
         # Call the LLM adapter (model/client warm per §7.3)
         generator = get_script_generator()
-        generated = await generator.generate(
-            slide_image_bytes=image_bytes,
-            slide_text=slide.extracted_text,
-            style_reference=style_reference,
-            pronunciation_hints=pronunciation_hints,
-        )
+        from app.core.metrics import llm_script_generation_total
+
+        try:
+            generated = await generator.generate(
+                slide_image_bytes=image_bytes,
+                slide_text=slide.extracted_text,
+                style_reference=style_reference,
+                pronunciation_hints=pronunciation_hints,
+            )
+        except Exception:
+            llm_script_generation_total.labels(provider=settings.llm_provider, status="failure").inc()
+            raise
+        llm_script_generation_total.labels(provider=settings.llm_provider, status="success").inc()
         logger.info(
             "script_gen_generated",
             slide_id=slide_id,

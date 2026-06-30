@@ -1,14 +1,35 @@
 # SPDX-License-Identifier: Apache-2.0
 import logging
 import sys
+from typing import Any
 
 import structlog
+
+
+def _inject_request_id(
+    logger: Any,
+    method_name: str,
+    event_dict: structlog.types.EventDict,
+) -> structlog.types.EventDict:
+    """Structlog processor: pull request_id from contextvars and inject into every record.
+
+    The ContextVar is set by CorrelationIDMiddleware for HTTP requests and by the
+    Celery task_prerun signal for background tasks. If neither context is active the
+    field is omitted so log output stays clean in unit tests.
+    """
+    from app.core.middleware import get_request_id
+
+    rid = get_request_id()
+    if rid:
+        event_dict["request_id"] = rid
+    return event_dict
 
 
 def configure_logging() -> None:
     """Configure structlog for structured JSON output with correlation IDs."""
     shared_processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,
+        _inject_request_id,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
         structlog.stdlib.PositionalArgumentsFormatter(),

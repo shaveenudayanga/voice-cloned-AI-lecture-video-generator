@@ -2,10 +2,11 @@
 import uuid
 
 import structlog
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, HTTPException, Request, UploadFile
 
 from app.api.deps import AuthDep, SessionDep
 from app.core.config import settings
+from app.core.rate_limit import limiter
 from app.db.repositories.job_repository import JobRepository
 from app.db.repositories.slide_repository import SlideRepository
 from app.schemas import SlideUploadResponse
@@ -42,7 +43,9 @@ async def list_slides(project_id: str, auth: AuthDep, session: SessionDep) -> di
 
 
 @router.post("/projects/{project_id}/slides/upload", status_code=202, response_model=SlideUploadResponse)
+@limiter.limit(settings.rate_limit_upload)
 async def upload_slides(
+    request: Request,
     project_id: str,
     file: UploadFile,
     auth: AuthDep,

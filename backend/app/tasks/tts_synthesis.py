@@ -111,6 +111,9 @@ async def _run(
 
         existing = await clip_repo.get_by_fingerprint(sid, fingerprint)
         if existing is not None:
+            from app.core.metrics import tts_synthesis_cache_hits_total
+
+            tts_synthesis_cache_hits_total.inc()
             logger.info(
                 "tts_synthesis_cache_hit",
                 slide_id=slide_id,
@@ -129,6 +132,10 @@ async def _run(
             )
             await session.commit()
             return {"status": "ok", "slide_id": slide_id, "cache_hit": True}
+
+        from app.core.metrics import tts_synthesis_cache_misses_total
+
+        tts_synthesis_cache_misses_total.inc()
 
         await job_repo.update_status(jid, "running", progress_pct=20)
         await session.commit()

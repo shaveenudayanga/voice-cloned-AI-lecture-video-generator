@@ -133,7 +133,25 @@ class Settings(BaseSettings):
     # Rate limiting
     rate_limit_per_minute: int = Field(
         default=60,
-        description="API requests per minute per IP",
+        description="API requests per minute per IP (legacy — kept for backwards compat)",
+    )
+    rate_limit_default: str = Field(
+        default="100/minute",
+        description="Default rate limit applied to all endpoints (slowapi format, e.g. '100/minute')",
+    )
+    rate_limit_upload: str = Field(
+        default="10/minute",
+        description="Rate limit for file upload endpoints (slides, voices)",
+    )
+    rate_limit_generate: str = Field(
+        default="20/minute",
+        description="Rate limit for script generation and audio synthesis endpoints",
+    )
+
+    # OTel service name
+    otel_service_name: str = Field(
+        default="lecturevoice-api",
+        description="OpenTelemetry service.name resource attribute",
     )
 
     @field_validator("cors_origins", mode="before")
