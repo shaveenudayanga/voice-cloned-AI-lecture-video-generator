@@ -42,17 +42,13 @@ class ProjectRepository:
         return _to_entity(model)
 
     async def get(self, project_id: uuid.UUID) -> Project | None:
-        result = await self._session.execute(
-            select(ProjectModel).where(ProjectModel.id == project_id)
-        )
+        result = await self._session.execute(select(ProjectModel).where(ProjectModel.id == project_id))
         m = result.scalar_one_or_none()
         return _to_entity(m) if m is not None else None
 
     async def list_by_user(self, user_id: uuid.UUID) -> list[Project]:
         result = await self._session.execute(
-            select(ProjectModel)
-            .where(ProjectModel.user_id == user_id)
-            .order_by(ProjectModel.created_at.desc())
+            select(ProjectModel).where(ProjectModel.user_id == user_id).order_by(ProjectModel.created_at.desc())
         )
         return [_to_entity(m) for m in result.scalars().all()]
 
@@ -67,9 +63,7 @@ class ProjectRepository:
         project_id: uuid.UUID,
         voice_profile_id: uuid.UUID | None,
     ) -> Project | None:
-        result = await self._session.execute(
-            select(ProjectModel).where(ProjectModel.id == project_id)
-        )
+        result = await self._session.execute(select(ProjectModel).where(ProjectModel.id == project_id))
         m = result.scalar_one_or_none()
         if m is None:
             return None
@@ -83,9 +77,7 @@ class ProjectRepository:
         project_id: uuid.UUID,
         wizard_step: WizardStepLiteral,
     ) -> Project | None:
-        result = await self._session.execute(
-            select(ProjectModel).where(ProjectModel.id == project_id)
-        )
+        result = await self._session.execute(select(ProjectModel).where(ProjectModel.id == project_id))
         m = result.scalar_one_or_none()
         if m is None:
             return None

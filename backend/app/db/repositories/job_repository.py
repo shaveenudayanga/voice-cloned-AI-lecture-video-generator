@@ -51,9 +51,7 @@ class JobRepository:
         return _to_entity(model)
 
     async def get(self, job_id: uuid.UUID) -> Job | None:
-        result = await self._session.execute(
-            select(JobModel).where(JobModel.id == job_id)
-        )
+        result = await self._session.execute(select(JobModel).where(JobModel.id == job_id))
         model = result.scalar_one_or_none()
         return _to_entity(model) if model is not None else None
 
@@ -65,9 +63,7 @@ class JobRepository:
         error_message: str | None = None,
         result_payload: dict[str, object] | None = None,
     ) -> None:
-        result = await self._session.execute(
-            select(JobModel).where(JobModel.id == job_id)
-        )
+        result = await self._session.execute(select(JobModel).where(JobModel.id == job_id))
         model = result.scalar_one_or_none()
         if model is None:
             return

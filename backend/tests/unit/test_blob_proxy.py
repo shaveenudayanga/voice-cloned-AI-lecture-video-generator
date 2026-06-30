@@ -78,7 +78,5 @@ async def test_blob_proxy_not_found_returns_404(client) -> None:
 @pytest.mark.asyncio
 async def test_blob_proxy_requires_auth(client) -> None:
     """No X-API-Key header → 401."""
-    response = await client.get(
-        "/api/v1/blobs/projects/test/slides/slide.png"
-    )
+    response = await client.get("/api/v1/blobs/projects/test/slides/slide.png")
     assert response.status_code == 401

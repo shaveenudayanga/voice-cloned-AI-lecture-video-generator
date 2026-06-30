@@ -5,6 +5,7 @@ XTTS-v2 fallback adapter via coqui-tts (idiap fork). License: CPML (non-commerci
 Model loading is delegated to model_manager which applies the
 torch.serialization.add_safe_globals workaround required for PyTorch >= 2.6.
 """
+
 import asyncio
 import wave
 from pathlib import Path
@@ -16,10 +17,7 @@ from app.services.tts.interface import SynthesisResult
 
 logger = structlog.get_logger(__name__)
 
-_PREVIEW_TEXT = (
-    "Hello, this is a preview of my cloned voice for lecture recordings. "
-    "How does this sound?"
-)
+_PREVIEW_TEXT = "Hello, this is a preview of my cloned voice for lecture recordings. How does this sound?"
 
 _ENGINE_NAME = "xtts"
 

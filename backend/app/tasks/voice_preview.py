@@ -11,10 +11,7 @@ from app.tasks.celery_app import celery_app
 
 logger = structlog.get_logger(__name__)
 
-_PREVIEW_SENTENCE = (
-    "Hello, this is a preview of my cloned voice for lecture recordings. "
-    "How does this sound?"
-)
+_PREVIEW_SENTENCE = "Hello, this is a preview of my cloned voice for lecture recordings. How does this sound?"
 
 
 @celery_app.task(  # type: ignore[untyped-decorator]
@@ -38,9 +35,7 @@ def synthesize_preview(
     30-slide synthesis run (§3.3 step 4, Phase 5).
     """
     logger.info("task_voice_preview_start", voice_profile_id=voice_profile_id, job_id=job_id)
-    return run_async(
-        _run(voice_profile_id=voice_profile_id, user_id=user_id, job_id=job_id)
-    )
+    return run_async(_run(voice_profile_id=voice_profile_id, user_id=user_id, job_id=job_id))
 
 
 async def _run(voice_profile_id: str, user_id: str, job_id: str) -> dict[str, object]:

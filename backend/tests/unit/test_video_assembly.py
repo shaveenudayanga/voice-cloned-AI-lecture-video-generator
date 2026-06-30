@@ -7,6 +7,7 @@ Unit tests for Phase 6 — video assembly:
   - POST /api/v1/projects/{id}/video/assemble endpoint (202 + 422 + 404)
   - GET /api/v1/projects/{id}/video/ endpoint (404 + 200)
 """
+
 import io
 import os
 import subprocess
@@ -38,6 +39,7 @@ def _make_wav_bytes(duration_s: float = 1.0) -> bytes:
 def _make_png_bytes() -> bytes:
     """Minimal valid 1x1 PNG."""
     import base64
+
     # 1x1 white PNG, base64-encoded
     return base64.b64decode(
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwADhQGAWjR9awAAAABJRU5ErkJggg=="

@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Audio/video duration probe. Uses ffprobe; falls back to Python wave for WAV files."""
+
 import json
 import subprocess
 import wave
@@ -16,8 +17,10 @@ def get_audio_duration(audio_path: Path) -> float:
         result = subprocess.run(
             [
                 "ffprobe",
-                "-v", "quiet",
-                "-print_format", "json",
+                "-v",
+                "quiet",
+                "-print_format",
+                "json",
                 "-show_format",
                 str(audio_path),
             ],

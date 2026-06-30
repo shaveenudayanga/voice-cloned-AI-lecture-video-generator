@@ -63,9 +63,7 @@ class VoiceProfileRepository:
         return _to_entity(model)
 
     async def get(self, profile_id: uuid.UUID) -> VoiceProfile | None:
-        result = await self._session.execute(
-            select(VoiceProfileModel).where(VoiceProfileModel.id == profile_id)
-        )
+        result = await self._session.execute(select(VoiceProfileModel).where(VoiceProfileModel.id == profile_id))
         m = result.scalar_one_or_none()
         return _to_entity(m) if m is not None else None
 
@@ -97,9 +95,7 @@ class VoiceProfileRepository:
         extra_style_sample: str | None = None,
         is_default: bool | None = None,
     ) -> VoiceProfile | None:
-        result = await self._session.execute(
-            select(VoiceProfileModel).where(VoiceProfileModel.id == profile_id)
-        )
+        result = await self._session.execute(select(VoiceProfileModel).where(VoiceProfileModel.id == profile_id))
         m = result.scalar_one_or_none()
         if m is None:
             return None
@@ -129,9 +125,7 @@ class VoiceProfileRepository:
         )
 
     async def delete(self, profile_id: uuid.UUID) -> None:
-        result = await self._session.execute(
-            select(VoiceProfileModel).where(VoiceProfileModel.id == profile_id)
-        )
+        result = await self._session.execute(select(VoiceProfileModel).where(VoiceProfileModel.id == profile_id))
         m = result.scalar_one_or_none()
         if m is not None:
             await self._session.delete(m)

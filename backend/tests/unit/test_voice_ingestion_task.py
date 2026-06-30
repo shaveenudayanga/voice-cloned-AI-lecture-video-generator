@@ -5,6 +5,7 @@ Tests for the voice_ingestion Celery task and WhisperTranscriber.
 The @pytest.mark.slow test runs the real faster-whisper model.
 It is skipped unless RUN_SLOW_TESTS=1 is set in the environment.
 """
+
 import io
 import os
 import uuid
@@ -102,9 +103,7 @@ async def test_voice_ingestion_task_updates_transcript() -> None:
         "Welcome to the lecture on machine learning.",
     )
     # Job status must have been set to success
-    success_calls = [
-        c for c in mock_job_repo.update_status.await_args_list if c.args[1] == "success"
-    ]
+    success_calls = [c for c in mock_job_repo.update_status.await_args_list if c.args[1] == "success"]
     assert len(success_calls) == 1
 
 

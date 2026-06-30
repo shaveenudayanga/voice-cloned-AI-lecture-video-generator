@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """SRT subtitle generator. Timing is cumulative; each entry starts where the previous ended."""
+
 from app.services.video.assembler import SlideAudioPair
 
 

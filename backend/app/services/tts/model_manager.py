@@ -10,6 +10,7 @@ All state is process-local — each Celery worker fork gets its own copy.
 Thread-safe via a single threading.Lock (GPU worker concurrency is 1,
 but worker_ready signal and first task may overlap).
 """
+
 import threading
 from typing import Any, Literal
 
@@ -20,8 +21,8 @@ from app.core.config import settings
 logger = structlog.get_logger(__name__)
 
 _lock = threading.Lock()
-_tts_model: Any = None        # F5TTS or XTTS instance, or None
-_whisper_model: Any = None    # WhisperModel instance, or None
+_tts_model: Any = None  # F5TTS or XTTS instance, or None
+_whisper_model: Any = None  # WhisperModel instance, or None
 _tts_slot_owner: Literal["f5", "xtts", None] = None
 
 
@@ -128,6 +129,7 @@ def _evict_whisper_locked() -> None:
 def _cuda_empty_cache() -> None:
     try:
         import torch
+
         torch.cuda.empty_cache()
     except Exception as exc:
         # CUDA not available on CPU workers — not an error condition
@@ -142,6 +144,7 @@ def _cuda_empty_cache() -> None:
 def _load_f5() -> Any:
     import torch
     from f5_tts.api import F5TTS
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     # FP16 mandatory on this hardware to fit within 4 GB VRAM (brief hardware constraint #3)
     dtype = torch.float16 if device == "cuda" else torch.float32
@@ -157,6 +160,7 @@ def _load_xtts() -> Any:
     from TTS.api import TTS
     from TTS.tts.configs.xtts_config import XttsConfig
     from TTS.tts.models.xtts import XttsAudioConfig
+
     # PyTorch >=2.6 restricts unpickling arbitrary classes. XTTS-v2 checkpoints
     # embed XttsConfig and XttsAudioConfig objects — they must be allowlisted.
     torch.serialization.add_safe_globals([XttsConfig, XttsAudioConfig])
@@ -174,6 +178,7 @@ def _load_whisper() -> Any:
     compute_type = "int8" if device == "cpu" else "float16"
 
     from faster_whisper import WhisperModel
+
     logger.info("model_manager_loading_whisper", size=settings.whisper_model_size, device=device)
     model = WhisperModel(settings.whisper_model_size, device=device, compute_type=compute_type)
     logger.info("model_manager_whisper_model_loaded", size=settings.whisper_model_size)

@@ -4,6 +4,7 @@ Phase 8 unit tests — per-slide script regeneration and audio synthesis endpoin
 
 All DB and Celery calls are mocked; no real services needed.
 """
+
 import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -18,6 +19,7 @@ _USER_ID = uuid.uuid5(uuid.NAMESPACE_OID, "test-api-key")
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _mock_project(
     project_id: uuid.UUID | None = None,
@@ -94,6 +96,7 @@ def _make_session() -> AsyncMock:
 # POST /projects/{project_id}/scripts/{slide_id}/regenerate → 202
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_regenerate_slide_script_returns_202() -> None:
     """Enqueues a single script_generation job and returns 202 with job_id and slide_id."""
@@ -152,6 +155,7 @@ async def test_regenerate_slide_script_returns_202() -> None:
 # when slide does not belong to this project
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_regenerate_slide_script_404_slide_not_in_project() -> None:
     """Returns 404 when the slide belongs to a different project."""
@@ -200,6 +204,7 @@ async def test_regenerate_slide_script_404_slide_not_in_project() -> None:
 # when project has no voice_profile_id
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_regenerate_slide_script_422_no_voice_profile() -> None:
     """Returns 422 when the project has no voice_profile_id set."""
@@ -238,6 +243,7 @@ async def test_regenerate_slide_script_422_no_voice_profile() -> None:
 # ---------------------------------------------------------------------------
 # POST /projects/{project_id}/audio/{slide_id}/synthesize → 202
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_synthesize_slide_audio_returns_202() -> None:
@@ -301,6 +307,7 @@ async def test_synthesize_slide_audio_returns_202() -> None:
 # POST /projects/{project_id}/audio/{slide_id}/synthesize → 422
 # when slide has no script
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_synthesize_slide_audio_422_no_script() -> None:

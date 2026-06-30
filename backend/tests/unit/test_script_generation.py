@@ -5,6 +5,7 @@ Phase 4 unit tests — script generation.
 All tests use fakes / mocks; no real API calls are made.
 The @pytest.mark.integration tests require GEMINI_API_KEY and are skipped by default.
 """
+
 import hashlib
 import json
 import os
@@ -21,6 +22,7 @@ from app.domain.value_objects import BlobKey
 # Fake LLMScriptGenerator
 # ---------------------------------------------------------------------------
 
+
 class FakeScriptGenerator:
     """In-process fake that returns deterministic output without calling any API."""
 
@@ -35,6 +37,7 @@ class FakeScriptGenerator:
         pronunciation_hints: str | None,
     ) -> object:
         from app.services.script.interface import GeneratedScript
+
         return GeneratedScript(
             text=self._text,
             estimated_reading_seconds=30,
@@ -45,6 +48,7 @@ class FakeScriptGenerator:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_script(
     text: str = "Hello world.",
@@ -69,24 +73,30 @@ def _make_script(
 # Test: factory returns correct adapter
 # ---------------------------------------------------------------------------
 
+
 def test_factory_gemini_returns_gemini_generator() -> None:
     from app.services.script import factory as f
+
     with patch.object(f.settings, "llm_provider", "gemini"):  # type: ignore[attr-defined]
         gen = f.get_script_generator()
     from app.services.script.gemini_adapter import GeminiScriptGenerator
+
     assert isinstance(gen, GeminiScriptGenerator)
 
 
 def test_factory_ollama_returns_ollama_generator() -> None:
     from app.services.script import factory as f
+
     with patch.object(f.settings, "llm_provider", "ollama"):  # type: ignore[attr-defined]
         gen = f.get_script_generator()
     from app.services.script.ollama_adapter import OllamaScriptGenerator
+
     assert isinstance(gen, OllamaScriptGenerator)
 
 
 def test_factory_unknown_raises() -> None:
     from app.services.script import factory as f
+
     with patch.object(f.settings, "llm_provider", "unknown_provider"):  # type: ignore[attr-defined]
         with pytest.raises(ValueError, match="Unknown LLM_PROVIDER"):
             f.get_script_generator()
@@ -95,6 +105,7 @@ def test_factory_unknown_raises() -> None:
 # ---------------------------------------------------------------------------
 # Test: prompt assembly contains style-injection framing text
 # ---------------------------------------------------------------------------
+
 
 def test_prompt_assembly_contains_style_framing_when_reference_given() -> None:
     """The assembled prompt must contain the framing from the template file."""
@@ -141,21 +152,26 @@ def test_prompt_assembly_includes_pronunciation_hints_when_given() -> None:
 # Test: Gemini adapter output validation triggers retry
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_gemini_adapter_retries_on_markdown_artifacts() -> None:
     """A response with '**bold**' triggers a single retry with the stricter prompt."""
     from app.services.script.gemini_adapter import GeminiScriptGenerator
 
-    bad_response = json.dumps({
-        "text": "This is **very important** content [see slide].",
-        "estimated_reading_seconds": 30,
-        "pronunciation_hints": None,
-    })
-    clean_response = json.dumps({
-        "text": "This is very important content, as shown on the slide.",
-        "estimated_reading_seconds": 30,
-        "pronunciation_hints": None,
-    })
+    bad_response = json.dumps(
+        {
+            "text": "This is **very important** content [see slide].",
+            "estimated_reading_seconds": 30,
+            "pronunciation_hints": None,
+        }
+    )
+    clean_response = json.dumps(
+        {
+            "text": "This is very important content, as shown on the slide.",
+            "estimated_reading_seconds": 30,
+            "pronunciation_hints": None,
+        }
+    )
 
     gen = GeminiScriptGenerator()
     call_count = 0
@@ -186,11 +202,13 @@ async def test_gemini_adapter_raises_after_two_artifact_failures() -> None:
     from app.domain.exceptions import ScriptGenerationError
     from app.services.script.gemini_adapter import GeminiScriptGenerator
 
-    bad = json.dumps({
-        "text": "Still has [brackets] here.",
-        "estimated_reading_seconds": 20,
-        "pronunciation_hints": None,
-    })
+    bad = json.dumps(
+        {
+            "text": "Still has [brackets] here.",
+            "estimated_reading_seconds": 20,
+            "pronunciation_hints": None,
+        }
+    )
 
     gen = GeminiScriptGenerator()
 
@@ -210,6 +228,7 @@ async def test_gemini_adapter_raises_after_two_artifact_failures() -> None:
 # ---------------------------------------------------------------------------
 # Test: script_generation task — full happy path
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_script_generation_task_upserts_script() -> None:
@@ -232,6 +251,7 @@ async def test_script_generation_task_upserts_script() -> None:
     fake_profile.extra_style_sample = None
 
     from app.services.script.interface import GeneratedScript
+
     fake_generated = GeneratedScript(
         text="Today we look at machine learning basics.",
         estimated_reading_seconds=30,
@@ -284,15 +304,14 @@ async def test_script_generation_task_upserts_script() -> None:
     call_kwargs = mock_script_repo.upsert.call_args
     assert call_kwargs.kwargs["text"] == fake_generated.text
 
-    success_calls = [
-        c for c in mock_job_repo.update_status.await_args_list if c.args[1] == "success"
-    ]
+    success_calls = [c for c in mock_job_repo.update_status.await_args_list if c.args[1] == "success"]
     assert len(success_calls) == 1
 
 
 # ---------------------------------------------------------------------------
 # Test: script_hash recomputed on PATCH text change
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_script_hash_recomputed_on_text_update(client: object) -> None:
@@ -395,6 +414,7 @@ async def test_patch_endpoint_recomputes_hash() -> None:
 # Integration test (skipped unless GEMINI_API_KEY is set)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.integration
 @pytest.mark.skipif(
     not os.environ.get("GEMINI_API_KEY"),
@@ -418,9 +438,11 @@ async def test_gemini_adapter_real_call_returns_clean_script() -> None:
     with patch.dict(os.environ, {"GEMINI_API_KEY": os.environ["GEMINI_API_KEY"]}):
         # Re-load settings to pick up real key
         import app.core.config as cfg
+
         importlib.reload(cfg)
 
         from app.services.script.gemini_adapter import GeminiScriptGenerator
+
         gen = GeminiScriptGenerator()
         result = await gen.generate(
             slide_image_bytes=png_bytes,

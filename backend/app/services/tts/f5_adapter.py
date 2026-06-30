@@ -5,6 +5,7 @@ F5-TTS adapter. License: CC-BY-NC-4.0 (non-commercial only — see docs/LICENSE_
 Model is loaded via model_manager once at worker startup; never inside a task body.
 FP16 is enforced in model_manager._load_f5() for 4 GB VRAM devices.
 """
+
 import asyncio
 import wave
 from pathlib import Path
@@ -16,10 +17,7 @@ from app.services.tts.interface import SynthesisResult
 
 logger = structlog.get_logger(__name__)
 
-_PREVIEW_TEXT = (
-    "Hello, this is a preview of my cloned voice for lecture recordings. "
-    "How does this sound?"
-)
+_PREVIEW_TEXT = "Hello, this is a preview of my cloned voice for lecture recordings. How does this sound?"
 
 _ENGINE_NAME = "f5"
 
@@ -82,6 +80,7 @@ class F5TTSAdapter:
                 # CPU fallback: temporary model instance, not cached through model_manager
                 import torch
                 from f5_tts.api import F5TTS
+
                 cpu_model = F5TTS(device="cpu", dtype=torch.float32)
                 _run_f5_infer(cpu_model, text, reference_audio_path, output_path)
                 used_gpu = False
@@ -115,6 +114,7 @@ def _run_f5_infer(model: Any, text: str, ref_path: Path, out_path: Path) -> None
 def _is_oom(exc: Exception) -> bool:
     try:
         import torch
+
         return isinstance(exc, torch.cuda.OutOfMemoryError)
     except Exception:
         return False
@@ -124,6 +124,7 @@ def _is_cuda(model: Any) -> bool:
     """Return True if the model appears to be on a CUDA device."""
     try:
         import torch
+
         # F5TTS stores its internal model; check the first parameter device
         params = list(model.ema_model.parameters())
         return bool(params and params[0].device.type == "cuda")

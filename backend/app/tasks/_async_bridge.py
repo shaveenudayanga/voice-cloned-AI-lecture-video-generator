@@ -9,6 +9,7 @@ a persistent event loop per worker (which Celery's sync model does not support).
 Each task invocation gets its own short-lived event loop via asyncio.run(),
 which is safe and correct for Celery's process-per-worker model.
 """
+
 import asyncio
 from collections.abc import Coroutine
 

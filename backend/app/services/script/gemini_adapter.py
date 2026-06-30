@@ -80,8 +80,6 @@ class GeminiScriptGenerator:
             raw2 = await self._call_api(strict_prompt, slide_image_bytes)
             result = self._parse_response(raw2)
             if _has_artifacts(result.text):
-                raise ScriptGenerationError(
-                    f"Gemini output still contains markdown artifacts after retry: {raw2!r}"
-                )
+                raise ScriptGenerationError(f"Gemini output still contains markdown artifacts after retry: {raw2!r}")
 
         return result

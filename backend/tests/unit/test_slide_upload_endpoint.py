@@ -5,6 +5,7 @@ Unit tests for POST /api/v1/projects/{project_id}/slides/upload and GET /api/v1/
 Storage calls and Celery tasks are mocked; no real DB or S3 needed.
 FastAPI dependency overrides replace the DB session with an AsyncMock.
 """
+
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path

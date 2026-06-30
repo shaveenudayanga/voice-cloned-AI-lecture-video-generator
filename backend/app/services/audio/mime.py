@@ -20,15 +20,17 @@ _MP3_SYNC_BYTES = frozenset({0xFB, 0xF3, 0xF2, 0xFA})
 _FTYP = b"ftyp"
 
 _ACCEPTED_MP4_TYPES = frozenset({"audio/mp4", "audio/x-m4a"})
-_ACCEPTED_ALL = frozenset({
-    "audio/wav",
-    "audio/x-wav",
-    "audio/mpeg",
-    "audio/ogg",
-    "audio/mp4",
-    "audio/x-m4a",
-    "audio/webm",
-})
+_ACCEPTED_ALL = frozenset(
+    {
+        "audio/wav",
+        "audio/x-wav",
+        "audio/mpeg",
+        "audio/ogg",
+        "audio/mp4",
+        "audio/x-m4a",
+        "audio/webm",
+    }
+)
 
 
 def sniff_audio_mime(header: bytes, declared_content_type: str) -> str | None:

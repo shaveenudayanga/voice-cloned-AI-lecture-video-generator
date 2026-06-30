@@ -44,9 +44,7 @@ class ScriptRepository:
     ) -> Script:
         """Create a new script for the slide or overwrite the existing one (idempotent)."""
         now = datetime.now(UTC)
-        result = await self._session.execute(
-            select(ScriptModel).where(ScriptModel.slide_id == slide_id)
-        )
+        result = await self._session.execute(select(ScriptModel).where(ScriptModel.slide_id == slide_id))
         m = result.scalar_one_or_none()
         script_hash = compute_script_hash(text)
 
@@ -76,23 +74,17 @@ class ScriptRepository:
         return _to_entity(m)
 
     async def get(self, script_id: uuid.UUID) -> Script | None:
-        result = await self._session.execute(
-            select(ScriptModel).where(ScriptModel.id == script_id)
-        )
+        result = await self._session.execute(select(ScriptModel).where(ScriptModel.id == script_id))
         m = result.scalar_one_or_none()
         return _to_entity(m) if m is not None else None
 
     async def get_by_slide(self, slide_id: uuid.UUID) -> Script | None:
-        result = await self._session.execute(
-            select(ScriptModel).where(ScriptModel.slide_id == slide_id)
-        )
+        result = await self._session.execute(select(ScriptModel).where(ScriptModel.slide_id == slide_id))
         m = result.scalar_one_or_none()
         return _to_entity(m) if m is not None else None
 
     async def list_by_project(self, project_id: uuid.UUID) -> list[Script]:
-        result = await self._session.execute(
-            select(ScriptModel).where(ScriptModel.project_id == project_id)
-        )
+        result = await self._session.execute(select(ScriptModel).where(ScriptModel.project_id == project_id))
         return [_to_entity(m) for m in result.scalars().all()]
 
     async def update(
@@ -102,9 +94,7 @@ class ScriptRepository:
         pronunciation_hints: str | None = None,
     ) -> Script | None:
         """Patch text and/or pronunciation_hints. Recomputes hash and bumps version on text change."""
-        result = await self._session.execute(
-            select(ScriptModel).where(ScriptModel.id == script_id)
-        )
+        result = await self._session.execute(select(ScriptModel).where(ScriptModel.id == script_id))
         m = result.scalar_one_or_none()
         if m is None:
             return None

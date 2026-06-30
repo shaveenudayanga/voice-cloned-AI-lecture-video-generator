@@ -47,21 +47,15 @@ class SlideRepository:
         return _to_entity(model)
 
     async def get(self, slide_id: uuid.UUID) -> Slide | None:
-        result = await self._session.execute(
-            select(SlideModel).where(SlideModel.id == slide_id)
-        )
+        result = await self._session.execute(select(SlideModel).where(SlideModel.id == slide_id))
         m = result.scalar_one_or_none()
         return _to_entity(m) if m is not None else None
 
     async def list_by_project(self, project_id: uuid.UUID) -> list[Slide]:
         result = await self._session.execute(
-            select(SlideModel)
-            .where(SlideModel.project_id == project_id)
-            .order_by(SlideModel.order_index)
+            select(SlideModel).where(SlideModel.project_id == project_id).order_by(SlideModel.order_index)
         )
         return [_to_entity(m) for m in result.scalars().all()]
 
     async def delete_by_project(self, project_id: uuid.UUID) -> None:
-        await self._session.execute(
-            delete(SlideModel).where(SlideModel.project_id == project_id)
-        )
+        await self._session.execute(delete(SlideModel).where(SlideModel.project_id == project_id))

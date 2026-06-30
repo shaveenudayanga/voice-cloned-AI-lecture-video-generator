@@ -31,9 +31,7 @@ def assemble_video(
     Model warm-up is not needed here (ffmpeg subprocess, no GPU model loading).
     """
     logger.info("task_video_assembly_start", project_id=project_id, job_id=job_id)
-    return run_async(
-        _run(project_id=project_id, job_id=job_id)
-    )
+    return run_async(_run(project_id=project_id, job_id=job_id))
 
 
 async def _run(project_id: str, job_id: str) -> dict[str, object]:
@@ -74,9 +72,7 @@ async def _run(project_id: str, job_id: str) -> dict[str, object]:
 
         missing = [sl.id for sl in slides if sl.id not in clip_by_slide]
         if missing:
-            raise ValueError(
-                f"{len(missing)} slide(s) missing AudioClip — run synthesis first"
-            )
+            raise ValueError(f"{len(missing)} slide(s) missing AudioClip — run synthesis first")
 
         await job_repo.update_status(jid, "running", progress_pct=15)
         await session.commit()

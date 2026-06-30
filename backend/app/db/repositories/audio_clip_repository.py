@@ -23,10 +23,7 @@ def compute_synthesis_fingerprint(
     Changing any of these makes a new fingerprint, invalidating the cached AudioClip
     and triggering re-synthesis for that slide only.
     """
-    payload = (
-        f"{script_hash}:{voice_profile_id}:{tts_engine}:"
-        f"{json.dumps(tts_params, sort_keys=True)}"
-    )
+    payload = f"{script_hash}:{voice_profile_id}:{tts_engine}:{json.dumps(tts_params, sort_keys=True)}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -50,15 +47,11 @@ class AudioClipRepository:
         self._session = session
 
     async def get_by_slide(self, slide_id: uuid.UUID) -> AudioClip | None:
-        result = await self._session.execute(
-            select(AudioClipModel).where(AudioClipModel.slide_id == slide_id)
-        )
+        result = await self._session.execute(select(AudioClipModel).where(AudioClipModel.slide_id == slide_id))
         m = result.scalar_one_or_none()
         return _to_entity(m) if m is not None else None
 
-    async def get_by_fingerprint(
-        self, slide_id: uuid.UUID, fingerprint: str
-    ) -> AudioClip | None:
+    async def get_by_fingerprint(self, slide_id: uuid.UUID, fingerprint: str) -> AudioClip | None:
         """Return an existing clip if the synthesis fingerprint matches (cache-hit path)."""
         result = await self._session.execute(
             select(AudioClipModel).where(
@@ -70,9 +63,7 @@ class AudioClipRepository:
         return _to_entity(m) if m is not None else None
 
     async def list_by_project(self, project_id: uuid.UUID) -> list[AudioClip]:
-        result = await self._session.execute(
-            select(AudioClipModel).where(AudioClipModel.project_id == project_id)
-        )
+        result = await self._session.execute(select(AudioClipModel).where(AudioClipModel.project_id == project_id))
         return [_to_entity(m) for m in result.scalars().all()]
 
     async def upsert(
@@ -89,9 +80,7 @@ class AudioClipRepository:
         """Insert a new AudioClip or replace the existing one for this slide (idempotent)."""
         now = datetime.now(UTC)
 
-        result = await self._session.execute(
-            select(AudioClipModel).where(AudioClipModel.slide_id == slide_id)
-        )
+        result = await self._session.execute(select(AudioClipModel).where(AudioClipModel.slide_id == slide_id))
         m = result.scalar_one_or_none()
 
         if m is None:

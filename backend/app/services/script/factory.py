@@ -19,6 +19,4 @@ def get_script_generator() -> LLMScriptGenerator:
 
         return GeminiScriptGenerator()
 
-    raise ValueError(
-        f"Unknown LLM_PROVIDER: {provider!r}. Must be 'gemini' or 'ollama'."
-    )
+    raise ValueError(f"Unknown LLM_PROVIDER: {provider!r}. Must be 'gemini' or 'ollama'.")

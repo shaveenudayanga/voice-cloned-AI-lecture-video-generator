@@ -67,10 +67,7 @@ async def trigger_video_assembly(
     if missing:
         raise HTTPException(
             status_code=422,
-            detail=(
-                f"{len(missing)} slide(s) are missing audio clips. "
-                "Run audio synthesis for all slides first."
-            ),
+            detail=(f"{len(missing)} slide(s) are missing audio clips. Run audio synthesis for all slides first."),
         )
 
     job = await job_repo.create(

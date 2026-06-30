@@ -29,9 +29,7 @@ def ingest_voice(
     Idempotent: safe to retry — always overwrites the transcript on re-run.
     """
     logger.info("task_voice_ingestion_start", voice_profile_id=voice_profile_id, job_id=job_id)
-    return run_async(
-        _run(voice_profile_id=voice_profile_id, blob_key=blob_key, job_id=job_id)
-    )
+    return run_async(_run(voice_profile_id=voice_profile_id, blob_key=blob_key, job_id=job_id))
 
 
 async def _run(voice_profile_id: str, blob_key: str, job_id: str) -> dict[str, object]:

@@ -6,6 +6,7 @@ LibreOffice is not available in the unit-test environment, so we mock the
 subprocess step and verify the parser correctly delegates to PdfSlideParser
 after the conversion succeeds.
 """
+
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 

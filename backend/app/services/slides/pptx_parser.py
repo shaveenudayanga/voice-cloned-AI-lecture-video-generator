@@ -24,8 +24,10 @@ class PptxSlideParser:
             proc = await asyncio.create_subprocess_exec(
                 "soffice",
                 "--headless",
-                "--convert-to", "pdf",
-                "--outdir", str(tmp),
+                "--convert-to",
+                "pdf",
+                "--outdir",
+                str(tmp),
                 str(pptx_path),
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
@@ -33,9 +35,7 @@ class PptxSlideParser:
             _stdout, stderr = await proc.communicate()
 
             if proc.returncode != 0:
-                raise RuntimeError(
-                    f"LibreOffice conversion failed (exit {proc.returncode}): {stderr.decode()}"
-                )
+                raise RuntimeError(f"LibreOffice conversion failed (exit {proc.returncode}): {stderr.decode()}")
 
             pdf_path = tmp / "input.pdf"
             if not pdf_path.exists():

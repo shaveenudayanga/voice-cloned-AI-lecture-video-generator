@@ -5,6 +5,7 @@ Unit tests for Phase 5: TTS engine, model_manager, synthesis fingerprint, cache-
 GPU and slow-model tests are gated behind @pytest.mark.slow and require RUN_SLOW_TESTS=1.
 All tests here run without any GPU or real model dependencies.
 """
+
 import io
 import os
 import uuid
@@ -185,9 +186,7 @@ async def test_tts_synthesis_cache_skip_skips_engine() -> None:
     # TTS engine synthesize must NOT have been called
     mock_tts_engine.synthesize.assert_not_called()
     # Job must have been marked success
-    success_calls = [
-        c for c in mock_job_repo.update_status.await_args_list if "success" in c.args
-    ]
+    success_calls = [c for c in mock_job_repo.update_status.await_args_list if "success" in c.args]
     assert len(success_calls) == 1
 
 

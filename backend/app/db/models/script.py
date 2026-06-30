@@ -44,6 +44,4 @@ class ScriptModel(Base):
         onupdate=lambda: datetime.now(UTC),
     )
 
-    __table_args__ = (
-        UniqueConstraint("slide_id", name="uq_scripts_slide_id"),
-    )
+    __table_args__ = (UniqueConstraint("slide_id", name="uq_scripts_slide_id"),)

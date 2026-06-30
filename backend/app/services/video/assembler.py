@@ -3,6 +3,7 @@
 ffmpeg video assembler. Each slide image is shown for exactly the duration of its audio clip.
 All ffmpeg/ffprobe calls use subprocess with list args — never shell=True.
 """
+
 import asyncio
 import subprocess
 import tempfile
@@ -105,11 +106,16 @@ class VideoAssembler:
 
             # Concatenate segments
             concat_cmd = [
-                "ffmpeg", "-y",
-                "-f", "concat",
-                "-safe", "0",
-                "-i", str(concat_file),
-                "-c", "copy",
+                "ffmpeg",
+                "-y",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                str(concat_file),
+                "-c",
+                "copy",
                 str(output_path),
             ]
             concat_result = _run_ffmpeg(concat_cmd, _CONCAT_TIMEOUT)
@@ -145,18 +151,24 @@ class VideoAssembler:
             cmd += ["-hwaccel", "auto"]
 
         cmd += [
-            "-loop", "1",
-            "-i", str(pair.image_path),
-            "-i", str(pair.audio_path),
-            "-c:v", "libx264",
-            "-tune", "stillimage",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-pix_fmt", "yuv420p",
-            "-vf", (
-                "scale=1920:1080:force_original_aspect_ratio=decrease,"
-                "pad=1920:1080:(ow-iw)/2:(oh-ih)/2"
-            ),
+            "-loop",
+            "1",
+            "-i",
+            str(pair.image_path),
+            "-i",
+            str(pair.audio_path),
+            "-c:v",
+            "libx264",
+            "-tune",
+            "stillimage",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-pix_fmt",
+            "yuv420p",
+            "-vf",
+            ("scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2"),
             "-shortest",
             str(seg_path),
         ]
@@ -164,6 +176,4 @@ class VideoAssembler:
         result = _run_ffmpeg(cmd, _SEGMENT_TIMEOUT)
         if result.returncode != 0:
             stderr = result.stderr.decode("utf-8", errors="replace")
-            raise VideoAssemblyError(
-                f"ffmpeg segment {pair.order_index} failed:\n{stderr}"
-            )
+            raise VideoAssemblyError(f"ffmpeg segment {pair.order_index} failed:\n{stderr}")

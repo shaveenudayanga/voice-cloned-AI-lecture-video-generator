@@ -5,13 +5,12 @@ Prompt loader for versioned script-generation templates.
 Templates live in docs/prompts/ (loaded by filename) — never hardcoded in Python.
 Each template file has sections delimited by '## SECTION_NAME' markers.
 """
+
 from pathlib import Path
 
 _PROMPTS_DIR = Path(__file__).parents[4] / "docs" / "prompts"
 
-_STRICT_ADDENDUM = (
-    "Reply with plain narration text only. No brackets, bullets, or markdown."
-)
+_STRICT_ADDENDUM = "Reply with plain narration text only. No brackets, bullets, or markdown."
 
 
 def _load_template(name: str) -> str:
