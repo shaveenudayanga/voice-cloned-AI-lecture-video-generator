@@ -7,12 +7,27 @@ name: lecturevoice
 services:
   api:
     restart: always
+    image: lecturevoice-api:0.1.0
+    labels:
+      org.opencontainers.image.version: "0.1.0"
+      org.opencontainers.image.title: "LectureVoice API"
+      org.opencontainers.image.licenses: "Apache-2.0"
 
   worker-cpu:
     restart: always
+    image: lecturevoice-worker-cpu:0.1.0
+    labels:
+      org.opencontainers.image.version: "0.1.0"
+      org.opencontainers.image.title: "LectureVoice CPU Worker"
+      org.opencontainers.image.licenses: "Apache-2.0"
 
   frontend:
     restart: always
+    image: lecturevoice-frontend:0.1.0
+    labels:
+      org.opencontainers.image.version: "0.1.0"
+      org.opencontainers.image.title: "LectureVoice Frontend"
+      org.opencontainers.image.licenses: "Apache-2.0"
 
   postgres:
     restart: always

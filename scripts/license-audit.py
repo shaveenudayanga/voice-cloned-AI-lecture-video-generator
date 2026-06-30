@@ -28,7 +28,7 @@ KNOWN_PROBLEMATIC = {
 
 def get_package_licenses() -> list[dict[str, str]]:
     result = subprocess.run(
-        [sys.executable, "-m", "pip_licenses", "--format=json", "--with-urls"],
+        [sys.executable, "-m", "piplicenses", "--format=json", "--with-urls"],
         capture_output=True,
         text=True,
     )

@@ -5,7 +5,7 @@ COMPOSE := docker compose -f infra/docker-compose.yml
 COMPOSE_GPU := $(COMPOSE) -f infra/docker-compose.gpu.yml
 COMPOSE_PROD := $(COMPOSE) -f infra/docker-compose.prod.yml
 
-.PHONY: help up down up-gpu test lint typecheck migrate license-audit check-env seed
+.PHONY: help up down up-gpu test lint typecheck migrate license-audit check-env seed install first-run release
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -75,3 +75,51 @@ license-audit: ## Regenerate docs/LICENSE_AUDIT.md and verify it matches committ
 
 seed: ## Seed the database with sample data
 	cd backend && python ../scripts/seed.py
+
+install: check-env ## First-time setup: copy .env if missing, pull images, run migrations, start stack
+	@if [ ! -f backend/.env ]; then \
+		cp backend/.env.example backend/.env; \
+		echo ""; \
+		echo "✔ Created backend/.env from .env.example."; \
+		echo "  Open backend/.env and set GEMINI_API_KEY and API_KEY before continuing."; \
+		echo "  Then run: make first-run"; \
+		echo ""; \
+		exit 0; \
+	fi
+	@echo "--- Pulling images ---"
+	$(COMPOSE) pull --ignore-pull-failures
+	@echo "--- Building images ---"
+	$(COMPOSE) build
+	@echo "--- Starting services ---"
+	$(COMPOSE) up -d
+	@echo "--- Waiting for database to be ready ---"
+	@for i in $$(seq 1 30); do \
+		$(COMPOSE) exec -T postgres pg_isready -U lecturevoice > /dev/null 2>&1 && break; \
+		echo "  Waiting for postgres ($$i/30)..."; \
+		sleep 2; \
+	done
+	@echo "--- Running migrations ---"
+	$(COMPOSE) exec -T api sh -c "cd /app && alembic upgrade head" || true
+	@echo ""
+	@echo "✔ LectureVoice is ready at http://localhost:3000"
+	@echo ""
+
+first-run: ## First-time setup + open browser (run this after git clone)
+	@$(MAKE) install
+	@echo "--- Opening browser ---"
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		open http://localhost:3000; \
+	elif grep -qi microsoft /proc/version 2>/dev/null; then \
+		cmd.exe /c start http://localhost:3000 2>/dev/null || true; \
+	else \
+		xdg-open http://localhost:3000 2>/dev/null || true; \
+	fi
+
+release: ## Tag Docker images with VERSION (does not push)
+	@VERSION=$$(cat VERSION); \
+	echo "--- Tagging images as lecturevoice-*:$$VERSION and :latest ---"; \
+	$(COMPOSE) build; \
+	docker tag lecturevoice-api:latest lecturevoice-api:$$VERSION; \
+	docker tag lecturevoice-worker-cpu:latest lecturevoice-worker-cpu:$$VERSION; \
+	docker tag lecturevoice-frontend:latest lecturevoice-frontend:$$VERSION; \
+	echo "✔ Tagged: $$VERSION (run 'docker push' separately when ready)"

@@ -1,10 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 FROM node:24-slim AS builder
 WORKDIR /app
-# Copy pre-installed node_modules from host (avoids npm/registry calls at build time)
-COPY node_modules ./node_modules
+
+# Enable pnpm via corepack (version pinned in package.json#packageManager)
+RUN corepack enable
+
+# Install dependencies before copying source so this layer is cached on re-builds
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
 COPY . .
-RUN node node_modules/next/dist/bin/next build
+RUN pnpm build
 
 FROM node:24-slim AS runner
 WORKDIR /app

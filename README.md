@@ -1,58 +1,98 @@
 # LectureVoice
 
-Turn lecture slides into narrated videos in the professor's own voice. Self-hosted, open-source, free.
-
-**License:** Apache-2.0 | **Model dependencies:** F5-TTS (CC-BY-NC-4.0), XTTS-v2 (CPML) — non-commercial educational use only
+Turn your lecture slides into a narrated video — in your own voice. Upload your slides, record 60 seconds of yourself speaking, and LectureVoice generates a complete MP4 where every slide is narrated by an AI that sounds like you. Free, self-hosted, and runs entirely on your own computer or lab server.
 
 ---
 
-## Quick Start
+## What you need before you start
 
-**Requirements:** Docker Desktop, 8 GB RAM minimum (16 GB recommended), NVIDIA GPU for production use.
+- **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** — the only software you need to install. Everything else runs inside Docker.
+- **A Gemini API key (free)** — LectureVoice uses Google's Gemini AI to write the narration scripts. Get a free key at [aistudio.google.com](https://aistudio.google.com/). If you'd rather run fully offline with no API key at all, see the Ollama option in [docs/runbook.md](docs/runbook.md).
+- **An NVIDIA GPU (optional)** — Voice generation is much faster with a GPU (a 30-slide lecture takes roughly 5–8 minutes). Without one it still works, just slower (30–60 minutes on CPU).
+
+---
+
+## Setup (one time only)
+
+Make sure Docker Desktop is running, then follow these three steps:
+
+**Step 1 — Download and create the configuration file:**
 
 ```bash
-# 1. Clone
-git clone <repo-url>
+git clone https://github.com/shaveenudayanga/voice-cloned-AI-lecture-video-generator.git
 cd voice-cloned-AI-lecture-video-generator
-
-# 2. Configure
-cp backend/.env.example backend/.env
-# Edit backend/.env — set API_KEY at minimum
-
-# 3. Start
-make up
-
-# 4. Open
-# Frontend: http://localhost:3000
-# API docs: http://localhost:8000/docs
+make first-run
 ```
 
-## Make Targets
+On the first run, `make first-run` creates a file called `backend/.env` and then stops so you can fill in your API key.
 
-| Command | Description |
-|---|---|
-| `make up` | Start all services |
-| `make down` | Stop all services |
-| `make up-gpu` | Start with GPU worker |
-| `make test` | Run unit tests |
-| `make lint` | Run ruff + ESLint |
-| `make typecheck` | Run mypy + tsc |
-| `make migrate` | Run DB migrations |
-| `make license-audit` | Regenerate LICENSE_AUDIT.md |
-| `make check-env` | Verify local environment |
+**Step 2 — Add your Gemini API key:**
 
-## Architecture
+Open `backend/.env` in a text editor. Find this line and paste in your key:
 
-See [docs/architecture.md](docs/architecture.md) and [PROJECT_BRIEF.md](PROJECT_BRIEF.md).
+```
+GEMINI_API_KEY=         ← paste your key here
+```
 
-## Low-VRAM Setup (RTX 3050 Ti / 4 GB)
+Also replace the access key with any long random password (this keeps your installation private):
+
+```
+API_KEY=change-me-before-deploy   ← replace this
+```
+
+Save the file.
+
+**Step 3 — Start the app:**
 
 ```bash
-# In backend/.env:
-VRAM_BUDGET_GB=4.0
-WHISPER_MODEL_SIZE=base
+make first-run
 ```
 
-## License Note
+This pulls all required Docker images and builds the app. On a fast internet connection (100 Mbps+) this takes **10–20 minutes** the first time — it downloads roughly 1.5 GB of images and compiles the frontend. On a slower connection allow 30+ minutes. Your browser opens automatically when it's ready. Subsequent starts (`make up`) are fast because images are cached.
 
-This project's source is Apache-2.0. The F5-TTS and XTTS-v2 model weights are **non-commercial only** (CC-BY-NC-4.0 and CPML respectively). See [docs/LICENSE_AUDIT.md](docs/LICENSE_AUDIT.md).
+**Next time**, start and stop with:
+
+```bash
+make up    # start
+make down  # stop
+```
+
+---
+
+## Try it with a sample lecture first
+
+A ready-made 5-slide lecture on photosynthesis is included in [sample-content/](sample-content/). Use it on your first run so you can learn the workflow before uploading your own slides.
+
+---
+
+## Your first lecture video — step by step
+
+1. **Open** [http://localhost:3000](http://localhost:3000) in your browser.
+2. **Create a project** — click "Create new lecture video" and give it a name.
+3. **Upload slides** — drag in your PDF or PowerPoint file (up to 50 MB). You can delete and re-upload until it looks right.
+4. **Record your voice** — click Record and speak naturally for about 60 seconds. Read from any lecture notes, tell an anecdote, anything in your normal teaching voice. Click Stop when done. You can re-record as many times as you like.
+   - After recording, the app plays back a short test sentence in your synthesized voice so you can confirm it sounds right before continuing.
+   - **You only ever need to record once.** Your voice is saved and reused for every future lecture automatically.
+5. **Review the scripts** — LectureVoice writes a narration script for each slide. Read through them; edit any slide freely. Click Save on each slide you change.
+6. **Generate audio** — click Generate Audio. Each slide's narration is synthesized in your voice. You can play each one back and, if any sounds wrong, edit that slide's script and regenerate just that slide.
+7. **Render the video** — click Render. LectureVoice assembles all the slides and audio into a single MP4. A subtitle file (.srt) is included automatically.
+8. **Download** — click "Download video" to save the MP4 to your computer.
+
+---
+
+## Something not working?
+
+See [docs/runbook.md](docs/runbook.md) for:
+- How to add other faculty members
+- How to use Ollama (fully offline, no API key)
+- How to scale up for faster processing
+- How to delete voice recordings (biometric data deletion procedure)
+- Backup and restore instructions
+
+## Want to understand how this works?
+
+See [docs/architecture.md](docs/architecture.md).
+
+---
+
+**License:** Apache-2.0 | **Voice model licenses:** F5-TTS (CC-BY-NC-4.0), XTTS-v2 (CPML) — non-commercial educational use only. See [docs/LICENSE_AUDIT.md](docs/LICENSE_AUDIT.md).

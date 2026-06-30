@@ -80,6 +80,7 @@ dev = [
     "ruff>=0.9",
     "mypy>=1.13,<2",
     "pip-audit>=2.8",
+    "pip-licenses>=5.0",
 ]
 
 [tool.pytest.ini_options]
