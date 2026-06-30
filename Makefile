@@ -99,7 +99,7 @@ install: check-env ## First-time setup: copy .env if missing, pull images, run m
 		sleep 2; \
 	done
 	@echo "--- Running migrations ---"
-	$(COMPOSE) exec -T api sh -c "cd /app && alembic upgrade head" || true
+	$(COMPOSE) exec -T api sh -c "cd /app && uv run alembic upgrade head"
 	@echo ""
 	@echo "✔ LectureVoice is ready at http://localhost:3000"
 	@echo ""

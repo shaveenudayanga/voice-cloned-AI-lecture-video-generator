@@ -25,8 +25,9 @@ COPY pyproject.toml uv.lock ./
 # Install production dependencies only (no [gpu] extras on CPU image)
 RUN uv sync --frozen --no-dev
 
-# Copy application source
+# Copy application source and Alembic config
 COPY app/ ./app/
+COPY alembic.ini ./
 
 FROM base AS api
 EXPOSE 8000
