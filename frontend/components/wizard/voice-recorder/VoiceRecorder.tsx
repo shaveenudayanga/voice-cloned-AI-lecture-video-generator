@@ -3,7 +3,7 @@
 // Level meter uses Web Audio AnalyserNode + requestAnimationFrame (never setInterval).
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 
@@ -49,6 +49,7 @@ export function VoiceRecorder({
   const chunksRef = useRef<Blob[]>([]);
   const blobRef = useRef<Blob | null>(null);
   const playbackRef = useRef<HTMLAudioElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const rafRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -163,12 +164,12 @@ export function VoiceRecorder({
     return errorMsg;
   })();
 
-  // Derive preview blob key — no useState needed
+  // Derive preview blob key from the job result — the backend decides the storage
+  // location (users/{user}/voices/{id}_preview.wav), so never hardcode it here.
   const previewBlobKey =
-    profileId &&
     previewJobQuery.data?.status === "complete" &&
-    profileQuery.data
-      ? `voices/${profileId}/preview.wav`
+    typeof previewJobQuery.data.result?.["preview_audio_key"] === "string"
+      ? (previewJobQuery.data.result["preview_audio_key"] as string)
       : null;
 
   // -------------------------------------------------------------------------
@@ -275,6 +276,25 @@ export function VoiceRecorder({
   }, []);
 
   // -------------------------------------------------------------------------
+  // Upload an existing audio file (WAV/MP3/OGG/M4A/WebM) instead of recording.
+  // The picked file becomes the recording blob, reusing the same
+  // upload → ingest → preview pipeline as a live recording.
+  // -------------------------------------------------------------------------
+  const onFilePicked = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset so picking the same file again still fires onChange
+    e.target.value = "";
+    if (!file) return;
+    blobRef.current = file;
+    setErrorMsg(null);
+    setElapsed(0);
+    setLevel(0);
+    const base = file.name.replace(/\.[^./\\]+$/, "").trim();
+    if (base) setDisplayName(base);
+    setState("recorded");
+  }, []);
+
+  // -------------------------------------------------------------------------
   // Upload + ingest
   // -------------------------------------------------------------------------
   const uploadAndIngest = useCallback(async () => {
@@ -339,13 +359,29 @@ export function VoiceRecorder({
       {/* Buttons */}
       <div className="flex flex-wrap gap-3">
         {effectiveState === "idle" && (
-          <button
-            type="button"
-            onClick={() => void startRecording()}
-            className="rounded-[var(--radius-md)] bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
-          >
-            ● Record
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => void startRecording()}
+              className="rounded-[var(--radius-md)] bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+            >
+              ● Record
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="rounded-[var(--radius-md)] border border-[var(--color-border)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-muted)] transition-colors"
+            >
+              ⬆ Upload audio file
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*,.mp3,.wav,.ogg,.m4a,.webm"
+              className="hidden"
+              onChange={onFilePicked}
+            />
+          </>
         )}
 
         {effectiveState === "recording" && (

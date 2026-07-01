@@ -19,9 +19,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Security
-    # TODO(auth-upgrade): Replace with DB-backed per-user key lookup.
-    # The interface is intentionally minimal so that core/security.py can
-    # swap to a repository lookup without touching any endpoint code.
+    # TODO(auth-upgrade): see docs/known-limitations.md §KL-001
     api_key: str = Field(..., description="Server-wide API key for authentication")
 
     # CORS — never allow * in production

@@ -167,9 +167,7 @@ export function UploadStep({ projectId, slides, onComplete }: UploadStepProps) {
           <div className="grid grid-cols-3 gap-3">
             {previewSlides.map((slide) => (
               <div key={slide.id} className="space-y-1">
-                <SlideThumbnail
-                  blobKey={`projects/${projectId}/slides/slide-${slide.order_index + 1}.png`}
-                />
+                <SlideThumbnail blobKey={slide.image_blob_key} />
                 <p className="text-center text-xs text-[var(--color-muted-foreground)]">
                   Slide {slide.order_index + 1}
                 </p>

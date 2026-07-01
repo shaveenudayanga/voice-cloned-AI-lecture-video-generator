@@ -25,7 +25,9 @@ def _to_clip_item(clip: AudioClip, order_index: int) -> AudioClipItem:
         id=clip.id,
         slide_id=clip.slide_id,
         order_index=order_index,
-        audio_blob_key=str(clip.audio_blob),
+        # Bucket-relative key only — the /blobs proxy prepends the bucket itself.
+        # str(BlobKey) would embed the bucket name and break the proxy lookup.
+        audio_blob_key=clip.audio_blob.key,
         duration_seconds=clip.duration_seconds,
         engine_used=clip.engine_used,
         synthesis_fingerprint=clip.synthesis_fingerprint,

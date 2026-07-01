@@ -32,7 +32,13 @@ class GeminiScriptGenerator:
         from google import genai  # type: ignore[import-untyped,unused-ignore]
         from google.genai import types  # type: ignore[import-untyped,unused-ignore]
 
-        client = genai.Client(api_key=settings.gemini_api_key)
+        # A request timeout is mandatory: without it a stalled Gemini call hangs
+        # the Celery worker indefinitely and blocks the whole cpu queue. The
+        # tenacity retry above triggers on the resulting timeout. (timeout is ms.)
+        client = genai.Client(
+            api_key=settings.gemini_api_key,
+            http_options=types.HttpOptions(timeout=60_000),
+        )
         response = await client.aio.models.generate_content(
             model=settings.gemini_model,
             contents=[

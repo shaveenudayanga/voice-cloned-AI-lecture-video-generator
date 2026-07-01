@@ -8,16 +8,24 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     DEBIAN_FRONTEND=noninteractive
 
+# Ubuntu 22.04 (Jammy) ships Python up to 3.10; 3.13 requires the deadsnakes PPA.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.13 \
-    python3.13-dev \
-    python3-pip \
-    ffmpeg \
-    libsndfile1 \
+        software-properties-common \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        python3.13 \
+        python3.13-dev \
+        python3.13-venv \
+        ffmpeg \
+        libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv
+# Install uv — preferred over pip for the whole stack (§4.1).
+# python3-pip from Ubuntu repos targets the system Python (3.10), not 3.13.
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# uv needs to know which Python to use; pin it explicitly.
+ENV UV_PYTHON=python3.13
 
 WORKDIR /app
 

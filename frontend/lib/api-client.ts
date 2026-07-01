@@ -30,10 +30,15 @@ const API_BASE =
 const getApiKey = () => process.env.NEXT_PUBLIC_API_KEY ?? "";
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  // Never force application/json for FormData bodies — the browser must set the
+  // multipart/form-data Content-Type (with boundary) itself, otherwise the
+  // server cannot parse the upload and rejects it with 422.
+  const isFormData =
+    typeof FormData !== "undefined" && init?.body instanceof FormData;
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       "X-API-Key": getApiKey(),
       ...init?.headers,
     },

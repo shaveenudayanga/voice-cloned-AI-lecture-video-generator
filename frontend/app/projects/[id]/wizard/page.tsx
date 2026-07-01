@@ -228,7 +228,18 @@ function WizardInner() {
 
   // -------------------------------------------------------------------------
 
-  if (projectQuery.isLoading) {
+  // Wait for the prerequisite queries too, not just the project. Step components
+  // auto-trigger work when their inputs look empty (ScriptsStep generates,
+  // AudioStep synthesises, RenderStep assembles). If we render them before these
+  // queries resolve, `scripts.length === 0` etc. is transiently true and fires a
+  // spurious (and destructive/expensive) regeneration. Gate until data is loaded.
+  const prerequisitesLoading =
+    slidesQuery.isLoading ||
+    scriptsQuery.isLoading ||
+    audioQuery.isLoading ||
+    videoQuery.isLoading;
+
+  if (projectQuery.isLoading || prerequisitesLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-[var(--color-muted-foreground)]">
         Loading…

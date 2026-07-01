@@ -6,12 +6,7 @@ from fastapi.security import APIKeyHeader
 
 from app.core.config import settings
 
-# TODO(auth-upgrade): This module currently authenticates via a single server-wide
-# API key read from the API_KEY env var. To upgrade to per-user DB-backed keys:
-#   1. Implement a UserRepository.get_by_api_key(key) method.
-#   2. Replace the body of _verify_api_key with a DB lookup returning a User entity.
-#   3. Update the return type annotation here and in deps.py accordingly.
-# No endpoint code changes required — only this module and deps.py.
+# TODO(auth-upgrade): see docs/known-limitations.md §KL-001 and §KL-002
 
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 

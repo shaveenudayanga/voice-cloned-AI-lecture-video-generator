@@ -78,10 +78,9 @@ class F5TTSAdapter:
                     error=str(exc),
                 )
                 # CPU fallback: temporary model instance, not cached through model_manager
-                import torch
                 from f5_tts.api import F5TTS
 
-                cpu_model = F5TTS(device="cpu", dtype=torch.float32)
+                cpu_model = F5TTS(device="cpu")
                 _run_f5_infer(cpu_model, text, reference_audio_path, output_path)
                 used_gpu = False
             else:
@@ -103,12 +102,17 @@ class F5TTSAdapter:
 
 
 def _run_f5_infer(model: Any, text: str, ref_path: Path, out_path: Path) -> None:
-    model.infer(
-        ref_file=str(ref_path),
-        ref_text="",
-        gen_text=text,
-        file_wave=str(out_path),
-    )
+    import torch
+
+    # FP16 autocast on CUDA saves ~half VRAM and speeds inference (~2×) with negligible quality loss.
+    device = "cuda" if _is_cuda(model) else "cpu"
+    with torch.autocast(device_type=device, dtype=torch.float16 if device == "cuda" else torch.float32):
+        model.infer(
+            ref_file=str(ref_path),
+            ref_text="",
+            gen_text=text,
+            file_wave=str(out_path),
+        )
 
 
 def _is_oom(exc: Exception) -> bool:

@@ -95,17 +95,31 @@ services:
     build:
       context: ../frontend
       dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_* vars are inlined into the client bundle at build time,
+        # so the API key must be passed as a build arg (runtime env is not
+        # enough for the browser bundle). Without this, rebuilds bake an empty
+        # key and every browser API call 401s.
+        NEXT_PUBLIC_API_KEY: ${API_KEY}
+        NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
       NEXT_PUBLIC_DEPLOYMENT_MODE: web
+      NEXT_PUBLIC_API_KEY: ${API_KEY}
     depends_on:
       api:
         condition: service_healthy
     ports:
       - "3000:3000"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      # The Next.js standalone runner image has no wget/curl — use node itself,
+      # otherwise the healthcheck always fails and the container reports unhealthy.
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "require('http').get('http://localhost:3000',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
       interval: 10s
       timeout: 5s
       retries: 10

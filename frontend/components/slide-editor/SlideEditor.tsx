@@ -58,6 +58,7 @@ function SlideImage({ blobKey, alt, isZoomed, onToggleZoom }: SlideImageProps) {
       onClick={onToggleZoom}
       title={isZoomed ? "Click to fit" : "Click to zoom"}
     >
+      {/* eslint-disable-next-line @next/next/no-img-element -- blob object URLs from the slide proxy cannot use next/image */}
       <img
         src={url}
         alt={alt}

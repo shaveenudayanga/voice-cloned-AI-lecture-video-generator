@@ -19,11 +19,13 @@ logger = structlog.get_logger(__name__)
 
 
 def _to_artifact_response(artifact: VideoArtifact) -> VideoArtifactResponse:
-    srt_key: str | None = str(artifact.srt_blob) if artifact.srt_blob is not None else None
+    # Bucket-relative keys only — the /blobs proxy prepends the bucket itself.
+    # str(BlobKey) would embed the bucket name and break the proxy lookup.
+    srt_key: str | None = artifact.srt_blob.key if artifact.srt_blob is not None else None
     return VideoArtifactResponse(
         id=artifact.id,
         project_id=artifact.project_id,
-        video_blob_key=str(artifact.video_blob),
+        video_blob_key=artifact.video_blob.key,
         srt_blob_key=srt_key,
         total_duration_seconds=artifact.total_duration_seconds,
         slide_count=artifact.slide_count,

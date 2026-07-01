@@ -8,13 +8,23 @@ Each template file has sections delimited by '## SECTION_NAME' markers.
 
 from pathlib import Path
 
-_PROMPTS_DIR = Path(__file__).parents[4] / "docs" / "prompts"
+# Prompt templates ship inside the package (templates/) so they are always present
+# in the deployed image, which only copies the `app` package. For local development
+# and tests run from the repo root, fall back to the canonical docs/prompts/ copy.
+_PACKAGE_PROMPTS_DIR = Path(__file__).parent / "templates"
+_REPO_PROMPTS_DIR = Path(__file__).parents[4] / "docs" / "prompts"
 
 _STRICT_ADDENDUM = "Reply with plain narration text only. No brackets, bullets, or markdown."
 
 
 def _load_template(name: str) -> str:
-    return (_PROMPTS_DIR / name).read_text(encoding="utf-8")
+    for base in (_PACKAGE_PROMPTS_DIR, _REPO_PROMPTS_DIR):
+        candidate = base / name
+        if candidate.is_file():
+            return candidate.read_text(encoding="utf-8")
+    raise FileNotFoundError(
+        f"Prompt template {name!r} not found in {_PACKAGE_PROMPTS_DIR} or {_REPO_PROMPTS_DIR}"
+    )
 
 
 def _parse_sections(raw: str) -> dict[str, str]:

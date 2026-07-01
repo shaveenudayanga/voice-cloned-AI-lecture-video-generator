@@ -146,11 +146,10 @@ def _load_f5() -> Any:
     from f5_tts.api import F5TTS
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    # FP16 mandatory on this hardware to fit within 4 GB VRAM (brief hardware constraint #3)
-    dtype = torch.float16 if device == "cuda" else torch.float32
 
-    logger.info("model_manager_loading_f5", device=device, dtype=str(dtype))
-    model = F5TTS(device=device, dtype=dtype)
+    logger.info("model_manager_loading_f5", device=device)
+    # F5TTS.__init__ does not accept dtype; FP16 is applied via torch.autocast at infer time.
+    model = F5TTS(device=device)
     logger.info("model_manager_f5_loaded", vram_free_gb=get_vram_free_gb())
     return model
 
@@ -173,11 +172,26 @@ def _load_xtts() -> Any:
 
 
 def _load_whisper() -> Any:
-    # On < 6 GB devices Whisper runs on CPU so the GPU stays free for TTS synthesis.
-    device = "cpu" if settings.vram_budget_gb < 6.0 else "auto"
-    compute_type = "int8" if device == "cpu" else "float16"
-
     from faster_whisper import WhisperModel
+
+    # Whisper runs on CPU when there is no CUDA device OR on low-VRAM budgets
+    # (so the GPU stays free for TTS synthesis). CPU backends cannot do efficient
+    # float16 — requesting it raises at load time — so use int8 there.
+    # Detect CUDA via ctranslate2 (faster-whisper's backend); torch is not
+    # installed on the CPU image, so we must not import it here.
+    try:
+        import ctranslate2
+
+        cuda_device_count = ctranslate2.get_cuda_device_count()
+    except Exception:
+        cuda_device_count = 0
+
+    if cuda_device_count == 0 or settings.vram_budget_gb < 6.0:
+        device = "cpu"
+        compute_type = "int8"
+    else:
+        device = "cuda"
+        compute_type = "float16"
 
     logger.info("model_manager_loading_whisper", size=settings.whisper_model_size, device=device)
     model = WhisperModel(settings.whisper_model_size, device=device, compute_type=compute_type)

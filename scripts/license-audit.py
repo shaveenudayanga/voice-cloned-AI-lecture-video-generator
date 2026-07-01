@@ -2,9 +2,17 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Regenerates docs/LICENSE_AUDIT.md from installed Python packages.
-Usage:
-  python3 scripts/license-audit.py          # regenerate in place
-  python3 scripts/license-audit.py --check  # check if committed version is stale (CI mode)
+
+Must be run inside the backend virtualenv so that pip-licenses can see all
+installed packages.  The canonical invocation (matching the Makefile target)
+is:
+
+    python3 scripts/license-audit.py          # regenerate in place
+    python3 scripts/license-audit.py --check  # CI mode: exit 1 if stale
+
+If you see "No module named piplicenses", run via the project venv:
+
+    cd backend && uv run python ../scripts/license-audit.py
 """
 from __future__ import annotations
 
@@ -33,7 +41,17 @@ def get_package_licenses() -> list[dict[str, str]]:
         text=True,
     )
     if result.returncode != 0:
-        print(f"pip-licenses failed: {result.stderr}", file=sys.stderr)
+        # piplicenses missing → most likely running outside the backend venv.
+        if "No module named piplicenses" in result.stderr or "No module named pip_licenses" in result.stderr:
+            print(
+                "ERROR: pip-licenses is not installed in the current Python environment.\n"
+                "Run this script from inside the backend virtualenv:\n"
+                "  cd backend && uv run python ../scripts/license-audit.py\n"
+                "Or install it first: pip install pip-licenses",
+                file=sys.stderr,
+            )
+        else:
+            print(f"pip-licenses failed: {result.stderr}", file=sys.stderr)
         return []
     import json
     return json.loads(result.stdout)
